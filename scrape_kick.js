@@ -5,16 +5,28 @@ const fs = require('fs');
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  await page.goto('https://kick.facepunch.com/', { waitUntil: 'networkidle' });
+  await page.goto('https://kick.facepunch.com/');
+
+  await page.waitForSelector('a.drop-box', { timeout: 15000 });
+
+  await page.waitForFunction(() => {
+    const boxes = document.querySelectorAll('a.drop-box');
+    if (boxes.length < 4) return false;
+
+    return Array.from(boxes).every(box => {
+      const img = box.querySelector('video img');
+      const src = box.querySelector('video source');
+      return (img && img.src) || (src && src.src);
+    });
+  }, { timeout: 15000 });
 
   const drops = await page.evaluate(() => {
     const boxes = Array.from(document.querySelectorAll('a.drop-box'));
-    const images = [];
 
-    for (const box of boxes) {
-      let img = box.querySelector('video img');
+    return boxes.map(box => {
       let src = '';
 
+      const img = box.querySelector('video img');
       if (img && img.src) {
         src = img.src;
       } else {
@@ -24,17 +36,10 @@ const fs = require('fs');
         }
       }
 
-      if (
-        src &&
-        /\.(jpg|jpeg|png)$/i.test(src)
-      ) {
-        images.push(src);
-      }
-    }
-
-    return [...new Set(images)];
+      return src;
+    }).filter(Boolean);
   });
 
-  fs.writeFileSync('kick_imgs.txt', drops.join('\n'));
+  fs.writeFileSync('kick_imgs.txt', [...new Set(drops)].join('\n'));
   await browser.close();
 })();
