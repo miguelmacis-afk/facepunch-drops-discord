@@ -1,0 +1,29 @@
+name: Facepunch Drops Checker
+
+on:
+  schedule:
+    - cron: "*/10 * * * *" # cada 10 minutos
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Twitch & Kick Drops
+        run: |
+          TWITCH=$(curl -s https://twitch.facepunch.com/)
+          KICK=$(curl -s https://kick.facepunch.com/)
+
+          if echo "$TWITCH" | grep -qi "drops"; then
+            curl -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"content":"🎮 **Twitch Drops de Rust ACTIVOS**\nhttps://twitch.facepunch.com/"}' \
+              ${{ secrets.DISCORD_WEBHOOK }}
+          fi
+
+          if echo "$KICK" | grep -qi "drops"; then
+            curl -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"content":"🟢 **Kick Drops de Rust ACTIVOS**\nhttps://kick.facepunch.com/"}' \
+              ${{ secrets.DISCORD_WEBHOOK }}
+          fi
