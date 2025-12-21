@@ -1,4 +1,4 @@
-name: Facepunch Drops (Robust Images)
+name: Facepunch Drops (Fixed Robust)
 
 on:
   schedule:
@@ -76,14 +76,20 @@ jobs:
             }'
           }
 
+          PREV_TWITCH=$(jq -r '.twitch|tostring' state.json)
+          PREV_KICK=$(jq -r '.kick|tostring' state.json)
+
+          echo "DEBUG: PREV_TWITCH=$PREV_TWITCH, PREV_KICK=$PREV_KICK"
+          echo "DEBUG: TWITCH_ACTIVE=$TWITCH_ACTIVE, KICK_ACTIVE=$KICK_ACTIVE"
+
           TW_EMBED=null
           KI_EMBED=null
 
-          if [ "$TWITCH_ACTIVE" = "true" ] && [ "$(jq -r .twitch state.json)" = "false" ]; then
+          if [ "$TWITCH_ACTIVE" = "true" ] && [ "$PREV_TWITCH" = "false" ]; then
             TW_EMBED=$(build_embed "🎮 Twitch Drops de Rust ACTIVOS" "https://twitch.facepunch.com/" 5763719 twitch_imgs.txt)
           fi
 
-          if [ "$KICK_ACTIVE" = "true" ] && [ "$(jq -r .kick state.json)" = "false" ]; then
+          if [ "$KICK_ACTIVE" = "true" ] && [ "$PREV_KICK" = "false" ]; then
             KI_EMBED=$(build_embed "🟢 Kick Drops de Rust ACTIVOS" "https://kick.facepunch.com/" 3066993 kick_imgs.txt)
           fi
 
@@ -94,10 +100,13 @@ jobs:
       - name: Send Discord webhook
         run: |
           if [ "$(jq length embeds.json)" -gt 0 ]; then
+            echo "DEBUG: Sending Discord embed..."
             curl -X POST \
               -H "Content-Type: application/json" \
               -d "{\"embeds\":$(cat embeds.json)}" \
               ${{ secrets.DISCORD_WEBHOOK }}
+          else
+            echo "DEBUG: No new drops to send."
           fi
 
       - name: Update state
