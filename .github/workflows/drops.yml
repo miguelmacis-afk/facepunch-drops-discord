@@ -62,13 +62,12 @@ jobs:
             COLOR=$3
             FILE=$4
 
-            TOTAL=$(wc -l < "$FILE")
-
-            if [ "$TOTAL" -eq 0 ]; then
+            if [ ! -s "$FILE" ]; then
               echo ""
               return
             fi
 
+            TOTAL=$(wc -l < "$FILE")
             DESC="Total de drops: $TOTAL\n"
 
             COUNT=0
@@ -96,11 +95,11 @@ jobs:
           TW_EMBED=null
           KI_EMBED=null
 
-          if [ "$TWITCH_ACTIVE" = "true" ] && [ "$PREV_TWITCH" = "false" ]; then
+          if [ -s twitch_imgs.txt ] && [ "$PREV_TWITCH" = "false" ]; then
             TW_EMBED=$(build_embed "🎮 Twitch Drops ACTIVOS" "https://twitch.facepunch.com/" 5763719 twitch_imgs.txt)
           fi
 
-          if [ "$KICK_ACTIVE" = "true" ] && [ "$PREV_KICK" = "false" ]; then
+          if [ -s kick_imgs.txt ] && [ "$PREV_KICK" = "false" ]; then
             KI_EMBED=$(build_embed "🟢 Kick Drops ACTIVOS" "https://kick.facepunch.com/" 3066993 kick_imgs.txt)
           fi
 
@@ -111,6 +110,7 @@ jobs:
             [ $t, $k ] | map(select(. != null))
           ' > embeds.json
 
+          # Debug
           echo "DEBUG: Twitch embed:"
           echo "$TW_EMBED"
           echo "DEBUG: Kick embed:"
