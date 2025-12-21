@@ -1,29 +1,117 @@
-name: Facepunch Drops Checker
+name: Facepunch Drops (Robust)
 
 on:
   schedule:
-    - cron: "*/10 * * * *" # cada 10 minutos
+    - cron: "*/20 * * * *" # cada 20 minutos
   workflow_dispatch:
 
 jobs:
-  check:
+  drops:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check Twitch & Kick Drops
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Init state
         run: |
-          TWITCH=$(curl -s https://twitch.facepunch.com/)
-          KICK=$(curl -s https://kick.facepunch.com/)
+          if [ ! -f state.json ]; then
+            echo '{"twitch":false,"kick":false}' > state.json
+          fi
 
-          if echo "$TWITCH" | grep -qi "drops"; then
+      - name: Fetch pages
+        run: |
+          curl -A "Mozilla/5.0" -s https://twitch.facepunch.com/ > twitch.html
+          curl -A "Mozilla/5.0" -s https://kick.facepunch.com/ > kick.html
+
+      - name: Detect activity
+        run: |
+          detect() {
+            FILE=$1
+            if grep -Eiq "drop|reward|twitch drop|earn" "$FILE"; then
+              echo "true"
+            else
+              echo "false"
+            fi
+          }
+
+          echo "TWITCH_ACTIVE=$(detect twitch.html)" >> $GITHUB_ENV
+          echo "KICK_ACTIVE=$(detect kick.html)" >> $GITHUB_ENV
+
+      - name: Extract drops data
+        run: |
+          extract() {
+            FILE=$1
+            grep -oiP '<img[^>]+>' "$FILE" |
+            grep -Ei 'drop|reward|item|rust' |
+            grep -oP 'src="\K[^"]+' |
+            grep -Ev 'logo|icon|banner|avatar|favicon' |
+            sort -u
+          }
+
+          extract twitch.html > twitch_imgs.txt
+          extract kick.html > kick_imgs.txt
+
+      - name: Build embeds
+        run: |
+          build_embed() {
+            TITLE=$1
+            URL=$2
+            COLOR=$3
+            FILE=$4
+
+            DESC=""
+            COUNT=0
+            while read -r img; do
+              DESC="$DESC\n🖼 $img"
+              COUNT=$((COUNT+1))
+              [ $COUNT -ge 8 ] && break
+            done < "$FILE"
+
+            jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --argjson c $COLOR '
+            {
+              "title": $t,
+              "description": ($d | ltrimstr("\n")),
+              "url": $u,
+              "color": $c
+            }'
+          }
+
+          TW_EMBED=null
+          KI_EMBED=null
+
+          if [ "$TWITCH_ACTIVE" = "true" ] && [ "$(jq -r .twitch state.json)" = "false" ]; then
+            TW_EMBED=$(build_embed "🎮 Twitch Drops de Rust ACTIVOS" "https://twitch.facepunch.com/" 5763719 twitch_imgs.txt)
+          fi
+
+          if [ "$KICK_ACTIVE" = "true" ] && [ "$(jq -r .kick state.json)" = "false" ]; then
+            KI_EMBED=$(build_embed "🟢 Kick Drops de Rust ACTIVOS" "https://kick.facepunch.com/" 3066993 kick_imgs.txt)
+          fi
+
+          jq -n --argjson t "$TW_EMBED" --argjson k "$KI_EMBED" '
+            [ $t, $k ] | map(select(. != null))
+          ' > embeds.json
+
+      - name: Send Discord webhook
+        run: |
+          if [ "$(jq length embeds.json)" -gt 0 ]; then
             curl -X POST \
               -H "Content-Type: application/json" \
-              -d '{"content":"🎮 **Twitch Drops de Rust ACTIVOS**\nhttps://twitch.facepunch.com/"}' \
+              -d "{\"embeds\":$(cat embeds.json)}" \
               ${{ secrets.DISCORD_WEBHOOK }}
           fi
 
-          if echo "$KICK" | grep -qi "drops"; then
-            curl -X POST \
-              -H "Content-Type: application/json" \
-              -d '{"content":"🟢 **Kick Drops de Rust ACTIVOS**\nhttps://kick.facepunch.com/"}' \
-              ${{ secrets.DISCORD_WEBHOOK }}
-          fi
+      - name: Update state
+        run: |
+          jq -n \
+            --argjson t $TWITCH_ACTIVE \
+            --argjson k $KICK_ACTIVE \
+            '{twitch:$t,kick:$k}' > state.json
+
+      - name: Commit state
+        run: |
+          git config user.name "drops-bot"
+          git config user.email "bot@github"
+          git add state.json
+          git commit -m "Update drops state" || echo "No changes"
+          git push
