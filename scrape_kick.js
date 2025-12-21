@@ -7,27 +7,38 @@ const fs = require('fs');
 
   await page.goto('https://kick.facepunch.com/', { waitUntil: 'networkidle' });
 
-  await page.evaluate(async () => {
-    for (let i = 0; i < 5; i++) {
-      window.scrollTo(0, document.body.scrollHeight);
-      await new Promise(r => setTimeout(r, 500));
-    }
-  });
-
   const drops = await page.evaluate(() => {
-    const imgs = Array.from(document.querySelectorAll('img'));
+    const cards = Array.from(document.querySelectorAll('[class*="reward"], [class*="drop"], [class*="item"]'));
+    const images = [];
 
-    return imgs
-      .map(img => img.src || img.dataset.src || img.dataset.lazy || '')
-      .filter(src =>
+    for (const card of cards) {
+      const img =
+        card.querySelector('img') ||
+        card.querySelector('[style*="background-image"]');
+
+      if (!img) continue;
+
+      let src = '';
+
+      if (img.tagName === 'IMG') {
+        src = img.src || img.dataset.src || '';
+      } else {
+        const match = img.style.backgroundImage.match(/url\(["']?(.*?)["']?\)/);
+        if (match) src = match[1];
+      }
+
+      if (
         src &&
         /\.(jpg|jpeg|png)$/i.test(src) &&
         !/logo|icon|banner|avatar|favicon|header|background|promo|marque/i.test(src)
-      );
+      ) {
+        images.push(src);
+      }
+    }
+
+    return [...new Set(images)];
   });
 
-  const unique = [...new Set(drops)];
-  fs.writeFileSync('kick_imgs.txt', unique.join('\n'));
-
+  fs.writeFileSync('kick_imgs.txt', drops.join('\n'));
   await browser.close();
 })();
