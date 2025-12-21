@@ -3,46 +3,47 @@ const fs = require('fs');
 
 (async () => {
   const browser = await chromium.launch();
-  const page = await browser.newPage();
+  const page = await browser.newPage({
+    viewport: { width: 1280, height: 900 }
+  });
 
-  await page.goto('https://twitch.facepunch.com/');
+  await page.goto('https://twitch.facepunch.com/', { waitUntil: 'domcontentloaded' });
 
-  // 1️⃣ Esperar a que existan los drop-box
+  // 1️⃣ Esperar a que aparezcan los drops
   await page.waitForSelector('a.drop-box', { timeout: 15000 });
 
-  // 2️⃣ Esperar explícitamente a que TODOS tengan contenido cargado
+  // 2️⃣ SCROLL FORZADO (CLAVE)
+  await page.evaluate(async () => {
+    for (let i = 0; i < 5; i++) {
+      window.scrollTo(0, document.body.scrollHeight);
+      await new Promise(r => setTimeout(r, 800));
+    }
+  });
+
+  // 3️⃣ Esperar a que TODOS tengan imagen o video
   await page.waitForFunction(() => {
     const boxes = document.querySelectorAll('a.drop-box');
     if (boxes.length < 4) return false;
 
-    return Array.from(boxes).every(box => {
-      const img = box.querySelector('video img');
-      const src = box.querySelector('video source');
-      return (img && img.src) || (src && src.src);
-    });
+    return [...boxes].every(b =>
+      b.querySelector('video img[src]') ||
+      b.querySelector('video source[src]')
+    );
   }, { timeout: 15000 });
 
-  // 3️⃣ Extraer datos
-  const drops = await page.evaluate(() => {
-    const boxes = Array.from(document.querySelectorAll('a.drop-box'));
-
-    return boxes.map(box => {
-      let src = '';
-
+  // 4️⃣ Extraer
+  const imgs = await page.evaluate(() => {
+    return [...document.querySelectorAll('a.drop-box')].map(box => {
       const img = box.querySelector('video img');
-      if (img && img.src) {
-        src = img.src;
-      } else {
-        const source = box.querySelector('video source');
-        if (source && source.src) {
-          src = source.src.replace('.mp4', '.jpg');
-        }
-      }
+      if (img?.src) return img.src;
 
-      return src;
+      const src = box.querySelector('video source');
+      if (src?.src) return src.src.replace('.mp4', '.jpg');
+
+      return null;
     }).filter(Boolean);
   });
 
-  fs.writeFileSync('twitch_imgs.txt', [...new Set(drops)].join('\n'));
+  fs.writeFileSync('twitch_imgs.txt', [...new Set(imgs)].join('\n'));
   await browser.close();
 })();
