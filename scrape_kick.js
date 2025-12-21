@@ -19,10 +19,10 @@ const fs = require('fs');
       .filter(img =>
         img.src &&
         /\.(jpg|jpeg|png)$/i.test(img.src) &&
-        img.w >= 150 &&
-        img.h >= 150 &&
-        img.w <= 600 &&
-        img.h <= 600 &&
+        img.w >= 120 &&
+        img.h >= 120 &&
+        img.w <= 900 &&
+        img.h <= 900 &&
         !/logo|icon|banner|avatar|favicon|header|background|promo|marque/i.test(img.src)
       )
       .map(img => img.src);
