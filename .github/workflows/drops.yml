@@ -1,9 +1,9 @@
-name: Facepunch Drops (Visual + Count)
+name: Facepunch Drops Bot
 
 on:
   schedule:
     - cron: "*/20 * * * *" # cada 20 minutos
-  workflow_dispatch:
+  workflow_dispatch: # permite ejecución manual
 
 jobs:
   drops:
@@ -13,32 +13,65 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Initialize state
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install
+
+      - name: Scrape Twitch Drops
+        run: |
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            await page.goto('https://twitch.facepunch.com/');
+            await page.waitForLoadState('networkidle');
+
+            const imgs = await page.$$eval('img', imgs => imgs.map(i => i.src)
+              .filter(src => /\.(jpg|jpeg|png|svg)$/i.test(src) && !/logo|icon|banner|avatar|favicon/i.test(src))
+            );
+
+            fs.writeFileSync('twitch_imgs.txt', imgs.join('\n'));
+            await browser.close();
+          })();
+        shell: bash
+
+      - name: Scrape Kick Drops
+        run: |
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            await page.goto('https://kick.facepunch.com/');
+            await page.waitForLoadState('networkidle');
+
+            const imgs = await page.$$eval('img', imgs => imgs.map(i => i.src)
+              .filter(src => /\.(jpg|jpeg|png|svg)$/i.test(src) && !/logo|icon|banner|avatar|favicon/i.test(src))
+            );
+
+            fs.writeFileSync('kick_imgs.txt', imgs.join('\n'));
+            await browser.close();
+          })();
+        shell: bash
+
+      - name: Detect activity
         run: |
           if [ ! -f state.json ]; then
             echo '{"twitch":false,"kick":false}' > state.json
           fi
 
-      - name: Fetch pages
-        run: |
-          curl -A "Mozilla/5.0" -s https://twitch.facepunch.com/ > twitch.html
-          curl -A "Mozilla/5.0" -s https://kick.facepunch.com/ > kick.html
-
-      - name: Extract drop images
-        run: |
-          extract_images() {
-            FILE=$1
-            grep -oP '<img[^>]+src="\K[^"]+' "$FILE" | \
-            grep -Ei '\.jpg|\.jpeg|\.png|\.svg' | \
-            grep -Ev 'logo|icon|banner|avatar|favicon' | \
-            sort -u
-          }
-
-          extract_images twitch.html > twitch_imgs.txt
-          extract_images kick.html > kick_imgs.txt
-
-      - name: Detect activity based on images
-        run: |
           if [ -s twitch_imgs.txt ]; then
             TWITCH_ACTIVE=true
           else
@@ -54,7 +87,7 @@ jobs:
           echo "TWITCH_ACTIVE=$TWITCH_ACTIVE" >> $GITHUB_ENV
           echo "KICK_ACTIVE=$KICK_ACTIVE" >> $GITHUB_ENV
 
-      - name: Build embeds with images + count
+      - name: Build embeds and send to Discord
         run: |
           build_embed() {
             TITLE=$1
@@ -110,24 +143,11 @@ jobs:
             [ $t, $k ] | map(select(. != null))
           ' > embeds.json
 
-          # Debug
-          echo "DEBUG: Twitch embed:"
-          echo "$TW_EMBED"
-          echo "DEBUG: Kick embed:"
-          echo "$KI_EMBED"
-          echo "DEBUG: Final embeds.json:"
-          cat embeds.json
-
-      - name: Send Discord webhook
-        run: |
           if [ "$(jq length embeds.json)" -gt 0 ]; then
-            echo "Sending Discord embed..."
             curl -X POST \
               -H "Content-Type: application/json" \
               -d "{\"embeds\":$(cat embeds.json)}" \
               ${{ secrets.DISCORD_WEBHOOK }}
-          else
-            echo "No new drops to send."
           fi
 
       - name: Update state
