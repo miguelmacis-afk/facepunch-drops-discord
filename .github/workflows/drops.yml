@@ -1,4 +1,4 @@
-name: Facepunch Drops (Images + Count)
+name: Facepunch Drops (Visual + Count)
 
 on:
   schedule:
@@ -54,7 +54,7 @@ jobs:
           echo "TWITCH_ACTIVE=$TWITCH_ACTIVE" >> $GITHUB_ENV
           echo "KICK_ACTIVE=$KICK_ACTIVE" >> $GITHUB_ENV
 
-      - name: Build embeds with count
+      - name: Build embeds with images + count
         run: |
           build_embed() {
             TITLE=$1
@@ -62,11 +62,15 @@ jobs:
             COLOR=$3
             FILE=$4
 
-            # Contar total de drops
             TOTAL=$(wc -l < "$FILE")
+
+            if [ "$TOTAL" -eq 0 ]; then
+              echo ""
+              return
+            fi
+
             DESC="Total de drops: $TOTAL\n"
 
-            # Agregar hasta 8 imágenes
             COUNT=0
             while read -r img; do
               DESC="$DESC🖼 $img\n"
@@ -74,13 +78,16 @@ jobs:
               [ $COUNT -ge 8 ] && break
             done < "$FILE"
 
-            jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --argjson c $COLOR '
-            {
-              "title": $t,
-              "description": $d,
-              "url": $u,
-              "color": $c
-            }'
+            THUMBNAIL=$(head -n 1 "$FILE")
+
+            jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --argjson c $COLOR --arg thumb "$THUMBNAIL" '
+              {
+                "title": $t,
+                "description": $d,
+                "url": $u,
+                "color": $c,
+                "thumbnail": {"url": $thumb}
+              }'
           }
 
           PREV_TWITCH=$(jq -r '.twitch|tostring' state.json)
@@ -97,9 +104,19 @@ jobs:
             KI_EMBED=$(build_embed "🟢 Kick Drops ACTIVOS" "https://kick.facepunch.com/" 3066993 kick_imgs.txt)
           fi
 
+          [ -z "$TW_EMBED" ] && TW_EMBED=null
+          [ -z "$KI_EMBED" ] && KI_EMBED=null
+
           jq -n --argjson t "$TW_EMBED" --argjson k "$KI_EMBED" '
             [ $t, $k ] | map(select(. != null))
           ' > embeds.json
+
+          echo "DEBUG: Twitch embed:"
+          echo "$TW_EMBED"
+          echo "DEBUG: Kick embed:"
+          echo "$KI_EMBED"
+          echo "DEBUG: Final embeds.json:"
+          cat embeds.json
 
       - name: Send Discord webhook
         run: |
