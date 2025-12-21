@@ -3,7 +3,7 @@ name: Facepunch Drops Bot
 on:
   schedule:
     - cron: "*/20 * * * *" # cada 20 minutos
-  workflow_dispatch: # permite ejecución manual
+  workflow_dispatch:
 
 jobs:
   drops:
@@ -27,44 +27,44 @@ jobs:
       - name: Scrape Twitch Drops
         run: |
           node <<'JS'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
+const { chromium } = require('playwright');
+const fs = require('fs');
 
-          (async () => {
-            const browser = await chromium.launch();
-            const page = await browser.newPage();
-            await page.goto('https://twitch.facepunch.com/');
-            await page.waitForLoadState('networkidle');
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  await page.goto('https://twitch.facepunch.com/');
+  await page.waitForLoadState('networkidle');
 
-            const imgs = await page.$$eval('img', imgs => imgs.map(i => i.src)
-              .filter(src => /\.(jpg|jpeg|png|svg)$/i.test(src) && !/logo|icon|banner|avatar|favicon/i.test(src))
-            );
+  const imgs = await page.$$eval('img', imgs => imgs.map(i => i.src)
+    .filter(src => /\.(jpg|jpeg|png|svg)$/i.test(src) && !/logo|icon|banner|avatar|favicon/i.test(src))
+  );
 
-            fs.writeFileSync('twitch_imgs.txt', imgs.join('\n'));
-            await browser.close();
-          })();
-        shell: bash
+  fs.writeFileSync('twitch_imgs.txt', imgs.join('\n'));
+  await browser.close();
+})();
+JS
 
       - name: Scrape Kick Drops
         run: |
           node <<'JS'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
+const { chromium } = require('playwright');
+const fs = require('fs');
 
-          (async () => {
-            const browser = await chromium.launch();
-            const page = await browser.newPage();
-            await page.goto('https://kick.facepunch.com/');
-            await page.waitForLoadState('networkidle');
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  await page.goto('https://kick.facepunch.com/');
+  await page.waitForLoadState('networkidle');
 
-            const imgs = await page.$$eval('img', imgs => imgs.map(i => i.src)
-              .filter(src => /\.(jpg|jpeg|png|svg)$/i.test(src) && !/logo|icon|banner|avatar|favicon/i.test(src))
-            );
+  const imgs = await page.$$eval('img', imgs => imgs.map(i => i.src)
+    .filter(src => /\.(jpg|jpeg|png|svg)$/i.test(src) && !/logo|icon|banner|avatar|favicon/i.test(src))
+  );
 
-            fs.writeFileSync('kick_imgs.txt', imgs.join('\n'));
-            await browser.close();
-          })();
-        shell: bash
+  fs.writeFileSync('kick_imgs.txt', imgs.join('\n'));
+  await browser.close();
+})();
+JS
 
       - name: Detect activity
         run: |
