@@ -1,4 +1,4 @@
-name: Facepunch Drops (Robust)
+name: Facepunch Drops (Robust Images)
 
 on:
   schedule:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Init state
+      - name: Initialize state
         run: |
           if [ ! -f state.json ]; then
             echo '{"twitch":false,"kick":false}' > state.json
@@ -38,19 +38,18 @@ jobs:
           echo "TWITCH_ACTIVE=$(detect twitch.html)" >> $GITHUB_ENV
           echo "KICK_ACTIVE=$(detect kick.html)" >> $GITHUB_ENV
 
-      - name: Extract drops data
+      - name: Extract drops images
         run: |
-          extract() {
+          extract_images() {
             FILE=$1
-            grep -oiP '<img[^>]+>' "$FILE" |
-            grep -Ei 'drop|reward|item|rust' |
-            grep -oP 'src="\K[^"]+' |
-            grep -Ev 'logo|icon|banner|avatar|favicon' |
+            grep -oP '<img[^>]+src="\K[^"]+' "$FILE" | \
+            grep -Ei '\.jpg|\.jpeg|\.png|\.svg' | \
+            grep -Ev 'logo|icon|banner|avatar|favicon' | \
             sort -u
           }
 
-          extract twitch.html > twitch_imgs.txt
-          extract kick.html > kick_imgs.txt
+          extract_images twitch.html > twitch_imgs.txt
+          extract_images kick.html > kick_imgs.txt
 
       - name: Build embeds
         run: |
