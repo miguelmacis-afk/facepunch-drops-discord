@@ -1,4 +1,4 @@
-name: Facepunch Drops (Fixed Robust)
+name: Facepunch Drops (Images-Based)
 
 on:
   schedule:
@@ -24,21 +24,7 @@ jobs:
           curl -A "Mozilla/5.0" -s https://twitch.facepunch.com/ > twitch.html
           curl -A "Mozilla/5.0" -s https://kick.facepunch.com/ > kick.html
 
-      - name: Detect activity
-        run: |
-          detect() {
-            FILE=$1
-            if grep -Eiq "drop|reward|twitch drop|earn" "$FILE"; then
-              echo "true"
-            else
-              echo "false"
-            fi
-          }
-
-          echo "TWITCH_ACTIVE=$(detect twitch.html)" >> $GITHUB_ENV
-          echo "KICK_ACTIVE=$(detect kick.html)" >> $GITHUB_ENV
-
-      - name: Extract drops images
+      - name: Extract images
         run: |
           extract_images() {
             FILE=$1
@@ -50,6 +36,23 @@ jobs:
 
           extract_images twitch.html > twitch_imgs.txt
           extract_images kick.html > kick_imgs.txt
+
+      - name: Detect activity based on images
+        run: |
+          if [ -s twitch_imgs.txt ]; then
+            TWITCH_ACTIVE=true
+          else
+            TWITCH_ACTIVE=false
+          fi
+
+          if [ -s kick_imgs.txt ]; then
+            KICK_ACTIVE=true
+          else
+            KICK_ACTIVE=false
+          fi
+
+          echo "TWITCH_ACTIVE=$TWITCH_ACTIVE" >> $GITHUB_ENV
+          echo "KICK_ACTIVE=$KICK_ACTIVE" >> $GITHUB_ENV
 
       - name: Build embeds
         run: |
