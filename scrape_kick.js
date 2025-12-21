@@ -8,29 +8,25 @@ const fs = require('fs');
   await page.goto('https://kick.facepunch.com/', { waitUntil: 'networkidle' });
 
   const drops = await page.evaluate(() => {
-    const cards = Array.from(document.querySelectorAll('[class*="reward"], [class*="drop"], [class*="item"]'));
+    const boxes = Array.from(document.querySelectorAll('a.drop-box'));
     const images = [];
 
-    for (const card of cards) {
-      const img =
-        card.querySelector('img') ||
-        card.querySelector('[style*="background-image"]');
-
-      if (!img) continue;
-
+    for (const box of boxes) {
+      let img = box.querySelector('video img');
       let src = '';
 
-      if (img.tagName === 'IMG') {
-        src = img.src || img.dataset.src || '';
+      if (img && img.src) {
+        src = img.src;
       } else {
-        const match = img.style.backgroundImage.match(/url\(["']?(.*?)["']?\)/);
-        if (match) src = match[1];
+        const source = box.querySelector('video source');
+        if (source && source.src) {
+          src = source.src.replace('.mp4', '.jpg');
+        }
       }
 
       if (
         src &&
-        /\.(jpg|jpeg|png)$/i.test(src) &&
-        !/logo|icon|banner|avatar|favicon|header|background|promo|marque/i.test(src)
+        /\.(jpg|jpeg|png)$/i.test(src)
       ) {
         images.push(src);
       }
