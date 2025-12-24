@@ -89,11 +89,18 @@ jobs:
             PREV="${PREV:-[]}"
             CURR="${CURR:-[]}"
 
+            # Detectar nuevos drops
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
             ')
 
-            # Traducir drops al español
+            # Envío inicial: si state.json está vacío, tomar todos
+            if [ "${PREV}" = "[]" ]; then
+              echo "⚡ Envío inicial de todos los drops de $PLATFORM"
+              NEW="$CURR"
+            fi
+
+            # Traducir nombres y tiempos al español
             NEW_TRANSLATED=$(jq -c 'map(
               .name |=
                 if .=="Pickaxe" then "Pico"
@@ -109,28 +116,6 @@ jobs:
             )' <<<"$NEW")
 
             COUNT=$(jq length <<<"${NEW_TRANSLATED:-[]}")
-            echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
-
-            if [ "${PREV}" = "[]" ]; then
-              echo "⚡ Envío inicial de todos los drops de $PLATFORM"
-              NEW_TRANSLATED="$CURR"
-              # Traducir toda la lista
-              NEW_TRANSLATED=$(jq -c 'map(
-                .name |=
-                  if .=="Pickaxe" then "Pico"
-                  elif .=="Hatchet" then "Hacha"
-                  elif .=="Furnace" then "Horno"
-                  elif .=="SAR" then "Rifle SAR"
-                  elif .=="Crossbow" then "Ballesta"
-                  elif .=="Sheet Metal Door" then "Puerta de chapa"
-                  elif .=="Jackhammer" then "Martillo neumático"
-                  elif .=="Large Wood Box" then "Caja grande de madera"
-                  else . end
-                | .time |= sub("Hours";"Horas") | .time |= sub("Hour";"Hora") | .time |= sub("Unknown";"Desconocido")
-              )' <<<"$NEW_TRANSLATED")
-              COUNT=$(jq length <<<"${NEW_TRANSLATED:-[]}")
-            fi
-
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
@@ -154,19 +139,15 @@ jobs:
                             timestamp:$timestamp
                           }')
 
-              echo "DEBUG: JSON a enviar a Discord:"
-              echo "$EMBED" | jq .
-
               curl -s -X POST -H "Content-Type: application/json" --data-binary "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
             fi
 
+            # Actualizar state.json
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
-          # Twitch violeta: 9502720
+          # Colores: Twitch violeta, Kick verde lima
           send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/
-
-          # Kick verde lima: 2003190
           send_platform kick kick.json 2003190 https://kick.facepunch.com/
 
       - name: Commit state.json
