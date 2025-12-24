@@ -119,15 +119,11 @@ jobs:
 
               i=1
               jq -c '.[]' <<<"$LIST" | while read DROP; do
-                NAME=$(jq -r '.name' <<<"$DROP")
-                TIME=$(jq -r '.time' <<<"$DROP")
+                NAME=$(jq -r '.name // "Drop"' <<<"$DROP" | tr -d '\n' | xargs)
+                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n' | xargs)
                 IMG=$(jq -r '.img' <<<"$DROP")
 
-                # --- Evitar null ---
-                NAME=${NAME:-Drop}
-                TIME=${TIME:-Desconocido}
-
-                # --- Traducción de nombres ---
+                # Traducción de nombres
                 NAME=$(jq -n --arg n "$NAME" '
                   $n |
                   if test("Pickaxe";"i") then "Pico"
@@ -198,29 +194,19 @@ jobs:
                 TIME=$(echo "$TIME" | sed -E 's/Hours?|hours?/Horas/g; s/Unknown/Desconocido/')
 
                 if [ "$TYPE" = "Exclusivo" ]; then
-                  jq -c '.streamers[]' <<<"$DROP" | while read S; do
-                    SNAME=$(jq -r '.name' <<<"$S")
-                    SURL=$(jq -r '.url' <<<"$S")
-
-                    TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
-                    DESC="$NAME ⏱ $TIME | Streamer: [$SNAME]($SURL)"
-
-                    EMBED=$(jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --arg img "$IMG" --argjson c "$COLOR" \
-                      '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
-
-                    curl -s -X POST -H "Content-Type: application/json" \
-                      --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
-                  done
+                  STREAMERS=$(jq -r '[.streamers[] | "[" + .name + "](" + .url + ")"] | join(", ")' <<<"$DROP")
+                  TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
+                  DESC="$NAME ⏱ $TIME | Streamer: $STREAMERS"
                 else
                   TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
                   DESC="$NAME ⏱ $TIME"
-
-                  EMBED=$(jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --arg img "$IMG" --argjson c "$COLOR" \
-                    '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
-
-                  curl -s -X POST -H "Content-Type: application/json" \
-                    --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
                 fi
+
+                EMBED=$(jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --arg img "$IMG" --argjson c "$COLOR" \
+                  '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
+
+                curl -s -X POST -H "Content-Type: application/json" \
+                  --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
 
                 i=$((i+1))
               done
