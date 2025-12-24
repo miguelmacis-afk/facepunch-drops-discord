@@ -76,41 +76,48 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          send_platform () {
-            PLATFORM=$1
-            FILE=$2
-            COLOR=$3
+         send_platform () {
+  PLATFORM=$1
+  FILE=$2
+  COLOR=$3
 
-            PREV=$(jq -c ".${PLATFORM} // []" state.json)
-            CURR=$(jq -c '.' "$FILE")
+  PREV=$(jq -c ".${PLATFORM} // []" state.json)
+  CURR=$(jq -c '.' "$FILE")
 
-            NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
-              [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
-            ')
+  # Asegurar arrays válidos
+  PREV="${PREV:-[]}"
+  CURR="${CURR:-[]}"
 
-            COUNT=$(jq length <<<"$NEW")
-            if [ "$COUNT" -eq 0 ]; then
-              echo "ℹ️ No hay nuevos drops en $PLATFORM"
-              return
-            fi
+  # Calcular drops nuevos
+  NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
+    [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
+  ')
 
-            EMBEDS=$(jq -c --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
-              { embeds: $drops | map({
-                  title: ("🎁 Nuevo Drop: " + .name),
-                  description: ("⏱ " + .time + " • Plataforma: " + $platform),
-                  color: $color,
-                  image: { url: .img },
-                  footer: { text:"Rust Drops Monitor" },
-                  timestamp: now|todate
-              }) }
-            ')
+  # Contar elementos de NEW
+  COUNT=$(jq length <<<"${NEW:-[]}")
+  if [ "$COUNT" -eq 0 ]; then
+    echo "ℹ️ No hay nuevos drops en $PLATFORM"
+    return
+  fi
 
-            curl -s -X POST -H "Content-Type: application/json" -d "$EMBEDS" "$DISCORD_WEBHOOK"
+  # Crear embeds
+  EMBEDS=$(jq -c --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
+    { embeds: $drops | map({
+        title: ("🎁 Nuevo Drop: " + .name),
+        description: ("⏱ " + .time + " • Plataforma: " + $platform),
+        color: $color,
+        image: { url: .img },
+        footer: { text:"Rust Drops Monitor" },
+        timestamp: now|todate
+    }) }
+  ')
 
-            # Actualizar state.json
-            jq --argjson ids "$CURR" ".${PLATFORM}=$ids" state.json > tmp.json && mv tmp.json state.json
-          }
+  # Enviar a Discord
+  curl -s -X POST -H "Content-Type: application/json" -d "$EMBEDS" "$DISCORD_WEBHOOK"
 
+  # Guardar estado actualizado
+  jq --argjson ids "$CURR" ".${PLATFORM}=$ids" state.json > tmp.json && mv tmp.json state.json
+}
           send_platform twitch twitch.json 6570404
           send_platform kick kick.json 3066993
 
