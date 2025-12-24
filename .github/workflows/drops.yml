@@ -123,13 +123,32 @@ jobs:
                 TIME=$(jq -r '.time' <<<"$DROP")
                 IMG=$(jq -r '.img' <<<"$DROP")
 
+                # --- Traducciones ---
+                NAME=$(echo "$NAME" | jq -Rn '
+                  if test("Pickaxe";"i") then "Pico"
+                  elif test("Hatchet";"i") then "Hacha"
+                  elif test("Jackhammer";"i") then "Martillo neumático"
+                  elif test("Assault Rifle";"i") then "Rifle de asalto"
+                  elif test("Bolt Action";"i") then "Rifle de cerrojo"
+                  elif test("MP5";"i") then "MP5"
+                  elif test("Thompson";"i") then "Thompson"
+                  elif test("Crossbow";"i") then "Ballesta"
+                  elif test("Garage Door";"i") then "Puerta de garaje"
+                  elif test("Sheet Metal Door";"i") then "Puerta de chapa"
+                  elif test("Large Wood Box";"i") then "Caja grande de madera"
+                  elif test("Furnace";"i") then "Horno"
+                  else . end
+                ')
+
+                TIME=$(echo "$TIME" | sed -E 's/Hours?|hours?/Horas/g; s/Unknown/Desconocido/')
+
                 if [ "$TYPE" = "Exclusivo" ]; then
                   jq -c '.streamers[]' <<<"$DROP" | while read S; do
                     SNAME=$(jq -r '.name' <<<"$S")
                     SURL=$(jq -r '.url' <<<"$S")
 
                     TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
-                    DESC="$NAME\nStreamer: [$SNAME]($SURL)\n⏱ $TIME"
+                    DESC="$NAME ⏱ $TIME | Streamer: [$SNAME]($SURL)"
 
                     EMBED=$(jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --arg img "$IMG" --argjson c "$COLOR" \
                       '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
@@ -139,7 +158,7 @@ jobs:
                   done
                 else
                   TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
-                  DESC="$NAME\n⏱ $TIME"
+                  DESC="$NAME ⏱ $TIME"
 
                   EMBED=$(jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --arg img "$IMG" --argjson c "$COLOR" \
                     '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
@@ -147,6 +166,7 @@ jobs:
                   curl -s -X POST -H "Content-Type: application/json" \
                     --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
                 fi
+
                 i=$((i+1))
               done
             }
