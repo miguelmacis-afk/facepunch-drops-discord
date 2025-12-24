@@ -93,7 +93,7 @@ jobs:
             COUNT=$(jq length <<<"${NEW:-[]}")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-            # Enviar todos la primera vez si state.json está vacío
+            # Envío inicial si state.json vacío
             if [ "${PREV}" = "[]" ]; then
               echo "⚡ Envío inicial de todos los drops de $PLATFORM"
               NEW="$CURR"
@@ -103,13 +103,15 @@ jobs:
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
+              # Embeds estilo neón
               EMBEDS=$(jq -n --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
                 { embeds: $drops | map({
-                    title: ("🎁 Nuevo Drop: " + .name),
-                    description: ("⏱ " + .time + " • Plataforma: " + $platform),
+                    title: ("🎁 **" + .name + "**"),
+                    description: "⏱ **" + .time + "**  • Plataforma: `" + $platform + "`",
                     color: $color,
                     image: { url: .img },
-                    footer: { text:"Rust Drops Monitor" },
+                    thumbnail: { url: .img },
+                    footer: { text:"Rust Drops Monitor | Plataforma: " + $platform },
                     timestamp: now|todate
                 }) }
               ')
@@ -124,8 +126,9 @@ jobs:
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
-          send_platform twitch twitch.json 6570404
-          send_platform kick kick.json 3066993
+          # Colores neón distintos para Twitch y Kick
+          send_platform twitch twitch.json 0x9146FF   # Twitch Purple
+          send_platform kick kick.json 0x1ED760      # Kick Green
 
       - name: Commit state.json
         run: |
