@@ -115,10 +115,17 @@ jobs:
               EMBEDS=$(jq ". + [ $EMBED ]" <<<"$EMBEDS")
             done
 
-            curl -s -X POST \
-              -H "Content-Type: application/json" \
-              -d "{\"embeds\":$EMBEDS}" \
-              "$DISCORD_WEBHOOK"
+            COUNT=$(jq length <<<"$EMBEDS")
+
+if [ "$COUNT" -eq 0 ]; then
+  echo "ℹ️ No hay nuevos drops en $PLATFORM"
+  return
+fi
+
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"embeds\":$EMBEDS}" \
+  "$DISCORD_WEBHOOK"
 
             jq --arg p "$PLATFORM" \
                --argjson ids "$(jq '[.[].id]' "$FILE")" \
