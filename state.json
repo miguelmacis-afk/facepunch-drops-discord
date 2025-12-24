@@ -1,4 +1,55 @@
 {
-  "twitch": [],
-  "kick": []
+  "twitch": [
+    {
+      "id": "https://www.twitch.tv/directory/category/rust",
+      "name": "HATCHET",
+      "time": "2 HOURS",
+      "img": "https://files.facepunch.com/lewis/1b2811b1/rustmas_hatchet.jpg"
+    },
+    {
+      "id": "https://www.twitch.tv/directory/category/rust",
+      "name": "PICKAXE",
+      "time": "4 HOURS",
+      "img": "https://files.facepunch.com/lewis/1b2811b1/rustmas_pickaxe.jpg"
+    },
+    {
+      "id": "https://www.twitch.tv/directory/category/rust",
+      "name": "FURNACE",
+      "time": "6 HOURS",
+      "img": "https://files.facepunch.com/lewis/1b2811b1/rustmas_furnace.jpg"
+    },
+    {
+      "id": "https://www.twitch.tv/directory/category/rust",
+      "name": "SEMI-AUTOMATIC RIFLE",
+      "time": "8 HOURS",
+      "img": "https://files.facepunch.com/lewis/1b2811b1/rustmas_sar.jpg"
+    }
+  ],
+  "kick": [
+    {
+      "id": "https://kick.com/category/rust",
+      "name": "LARGE WOOD BOX",
+      "time": "2 HOURS",
+      "img": "https://files.facepunch.com/lewis/1b2711b1/large-wood-box.jpg"
+    },
+    {
+      "id": "https://kick.com/category/rust",
+      "name": "CROSSBOW",
+      "time": "4 HOURS",
+      "img": "https://files.facepunch.com/lewis/1b2711b1/crossbow.jpg"
+    },
+    {
+      "id": "https://kick.com/category/rust",
+      "name": "SHEET METAL DOOR",
+      "time": "6 HOURS",
+      "img": "https://files.facepunch.com/lewis/1b2711b1/sheet-metal-door.jpg"
+    },
+    {
+      "id": "https://kick.com/category/rust",
+      "name": "JACKHAMMER",
+      "time": "8 HOURS",
+      "img": "https://files.facepunch.com/lewis/1b2711b1/jackhammer.jpg"
+    }
+  ],
+  "lastRun": 1766588759
 }
