@@ -188,8 +188,8 @@ jobs:
                   else $n end
                 ' --raw-output)
 
-                # --- Limpiar TIME y traducir ---
-                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n\r\u00A0\u200B' | sed 's/&nbsp;//g' | xargs)
+                # --- Limpiar TIME y traducir correctamente ---
+                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | iconv -c -f UTF-8 -t ASCII//TRANSLIT | tr -d '\n\r' | xargs)
                 TIME=$(echo "$TIME" | sed -E 's/[Hh]ours?/Horas/g; s/Unknown/Desconocido/')
 
                 # --- Imagen ---
@@ -200,6 +200,7 @@ jobs:
                   IMG="https://rust.facepunch.com$IMG"
                 fi
 
+                # --- Preparar embed ---
                 if [ "$TYPE" = "Exclusivo" ]; then
                   STREAMERS=$(jq -r '[.streamers[] | "[" + .name + "](" + .url + ")"] | join(", ")' <<<"$DROP")
                   TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
