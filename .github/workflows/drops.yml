@@ -94,7 +94,7 @@ jobs:
             COUNT=$(jq length <<<"${NEW:-[]}")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-            # Envío inicial: si no hay drops previos, enviar todos
+            # Envío inicial: si state.json vacío, usar todos los drops de CURR
             if [ "$(jq length <<<"$PREV")" -eq 0 ]; then
               echo "⚡ Envío inicial de todos los drops de $PLATFORM"
               NEW="$CURR"
@@ -104,7 +104,6 @@ jobs:
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
-              # Embeds estilo neón
               EMBEDS=$(jq -n --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
                 { embeds: $drops | map({
                     title: ("🎁 **" + .name + "**"),
@@ -123,8 +122,8 @@ jobs:
               curl -s -X POST -H "Content-Type: application/json" --data-binary "$EMBEDS" "$DISCORD_WEBHOOK"
             fi
 
-            # Actualizar state.json
-            jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
+            # Actualizar state.json con CURR directamente como JSON
+            echo "$CURR" | jq --argjson ids "$(cat)" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
           # Colores neón distintos para Twitch y Kick
