@@ -10,29 +10,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: 🎭 Install Playwright
+      - name: Install Playwright
         run: |
           npm init -y
           npm install playwright
           npx playwright install chromium
 
-      - name: 📄 Crear state.json si no existe
+      - name: Create state.json if missing
         run: |
           if [ ! -f state.json ]; then
             echo '{"twitch":[],"kick":[]}' > state.json
           fi
 
-      - name: 🧪 Crear scraper
+      - name: Create scraper
         run: |
-          cat <<'JS' > scrape.js
+          cat > scrape.js <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
 
@@ -54,13 +54,13 @@ jobs:
             });
 
             const drops = await page.evaluate(() =>
-              [...document.querySelectorAll('a.drop-box')].map(box => ({
-                id: box.querySelector('.drop-counter')?.dataset.itemid,
-                name: box.querySelector('.drop-type')?.innerText ?? 'Drop',
-                time: box.querySelector('.drop-time span')?.innerText ?? 'Unknown',
+              [...document.querySelectorAll('a.drop-box')].map(b => ({
+                id: b.querySelector('.drop-counter')?.dataset.itemid,
+                name: b.querySelector('.drop-type')?.innerText,
+                time: b.querySelector('.drop-time span')?.innerText,
                 img:
-                  box.querySelector('video img')?.src ||
-                  box.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
+                  b.querySelector('video img')?.src ||
+                  b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
                   null
               })).filter(d => d.id)
             );
@@ -70,66 +70,55 @@ jobs:
           })();
           JS
 
-      - name: 🔍 Scrape Twitch y Kick
+      - name: Scrape Twitch & Kick
         run: |
           node scrape.js https://twitch.facepunch.com/ twitch.json
           node scrape.js https://kick.facepunch.com/ kick.json
 
-      - name: 🔔 Detectar drops nuevos y avisar
+      - name: Notify Discord (new drops only)
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          build_embed() {
-            NAME="$1"
-            TIME="$2"
-            IMG="$3"
-            URL="$4"
-            COLOR="$5"
-
-            jq -n --arg name "$NAME" \
-                  --arg time "$TIME" \
-                  --arg img "$IMG" \
-                  --arg url "$URL" \
-                  --argjson color "$COLOR" <<'JQ'
-{
-  title: "🎁 Nuevo Drop Disponible",
-  description: "**\($name)**\n⏱ \($time)",
-  url: $url,
-  color: $color,
-  image: ($img | select(length > 0) | {url: .}),
-  footer: { text: "Rust Drops Monitor • Facepunch" },
-  timestamp: now | todate
-}
-JQ
-          }
-
-          send_platform() {
-            PLATFORM="$1"
-            FILE="$2"
-            URL="$3"
-            COLOR="$4"
+          send_platform () {
+            PLATFORM=$1
+            FILE=$2
+            URL=$3
+            COLOR=$4
 
             PREV=$(jq -r ".${PLATFORM}[]" state.json | sort)
             CURR=$(jq -r '.[].id' "$FILE" | sort)
+            NEW=$(comm -13 <(echo "$PREV") <(echo "$CURR"))
 
-            NEW_IDS=$(comm -13 <(echo "$PREV") <(echo "$CURR"))
-            [ -z "$NEW_IDS" ] && return
+            [ -z "$NEW" ] && return
 
-            EMBEDS=()
+            EMBEDS="[]"
 
-            for ID in $NEW_IDS; do
+            for ID in $NEW; do
               DROP=$(jq ".[] | select(.id==\"$ID\")" "$FILE")
-              EMBEDS+=("$(build_embed \
-                "$(jq -r .name <<<"$DROP")" \
-                "$(jq -r .time <<<"$DROP")" \
-                "$(jq -r .img <<<"$DROP")" \
-                "$URL" \
-                "$COLOR"
-              )")
+
+              EMBED=$(jq -c \
+                --arg name "$(jq -r .name <<<"$DROP")" \
+                --arg time "$(jq -r .time <<<"$DROP")" \
+                --arg img  "$(jq -r .img  <<<"$DROP")" \
+                --arg url "$URL" \
+                --argjson color "$COLOR" \
+                '{
+                  title: "🎁 Nuevo Drop Disponible",
+                  description: "**\($name)**\n⏱ \($time)",
+                  url: $url,
+                  color: $color,
+                  image: ($img | select(length>0) | {url:.}),
+                  footer: {text:"Rust Drops Monitor"},
+                  timestamp: now|todate
+                }')
+
+              EMBEDS=$(jq ". + [ $EMBED ]" <<<"$EMBEDS")
             done
 
-            jq -n --argjson e "$(printf '%s\n' "${EMBEDS[@]}" | jq -s '.')" '{embeds:$e}' | \
-              curl -s -X POST -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK"
+            curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -d "{\"embeds\":$EMBEDS}" \
+              "$DISCORD_WEBHOOK"
 
             jq --arg p "$PLATFORM" \
                --argjson ids "$(jq '[.[].id]' "$FILE")" \
@@ -139,10 +128,10 @@ JQ
           send_platform twitch twitch.json https://twitch.facepunch.com/ 6570406
           send_platform kick   kick.json   https://kick.facepunch.com/   3066993
 
-      - name: 💾 Guardar estado
+      - name: Commit state
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add state.json
-          git commit -m "update drop state" || echo "Sin cambios"
+          git commit -m "update drop state" || echo "No changes"
           git push
