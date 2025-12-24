@@ -103,16 +103,16 @@ jobs:
             # Traducir nombres y tiempos al español
             NEW_TRANSLATED=$(jq -c 'map(
               .name |=
-                if .=="Pickaxe" then "Pico"
-                elif .=="Hatchet" then "Hacha"
-                elif .=="Furnace" then "Horno"
-                elif .=="SAR" then "Rifle SAR"
-                elif .=="Crossbow" then "Ballesta"
-                elif .=="Sheet Metal Door" then "Puerta de chapa"
-                elif .=="Jackhammer" then "Martillo neumático"
-                elif .=="Large Wood Box" then "Caja grande de madera"
+                if test("Pickaxe";"i") then "Pico"
+                elif test("Hatchet";"i") then "Hacha"
+                elif test("Furnace";"i") then "Horno"
+                elif test("SAR";"i") then "Rifle SAR"
+                elif test("Crossbow";"i") then "Ballesta"
+                elif test("Sheet Metal Door";"i") then "Puerta de chapa"
+                elif test("Jackhammer";"i") then "Martillo neumático"
+                elif test("Large Wood Box";"i") then "Caja grande de madera"
                 else . end
-              | .time |= sub("Hours";"Horas") | .time |= sub("Hour";"Hora") | .time |= sub("Unknown";"Desconocido")
+              | .time |= sub("Hours|HOURS|hour|Hour";"Horas";"g") | .time |= sub("Unknown";"Desconocido")
             )' <<<"$NEW")
 
             COUNT=$(jq length <<<"${NEW_TRANSLATED:-[]}")
@@ -146,7 +146,7 @@ jobs:
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
-          # Colores: Twitch violeta, Kick verde lima
+          # Colores: Twitch violeta (#9146FF = 9502720), Kick verde lima (#1FA92B = 2003190)
           send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/
           send_platform kick kick.json 2003190 https://kick.facepunch.com/
 
