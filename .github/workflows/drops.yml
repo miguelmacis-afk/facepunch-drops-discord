@@ -188,7 +188,7 @@ jobs:
                 ' --raw-output)
 
                 TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n\r')
-                TIME=$(echo "$TIME" | sed -E 's/[[:space:]]*[Hh]ours?/ Horas/g; s/Unknown/Desconocido/')
+                TIME=$(echo "$TIME" | perl -E 's/[[:space:]]*[Hh]ours?/ Horas/g; s/Unknown/Desconocido/')
 
                 IMG=$(jq -r '.img // ""' <<<"$DROP")
                 [ -z "$IMG" ] && IMG="https://rust.facepunch.com/default-drop.jpg"
