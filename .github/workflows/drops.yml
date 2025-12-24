@@ -93,21 +93,50 @@ jobs:
               [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
             ')
 
-            COUNT=$(jq length <<<"${NEW:-[]}")
+            # Traducir drops al español
+            NEW_TRANSLATED=$(jq -c 'map(
+              .name |=
+                if .=="Pickaxe" then "Pico"
+                elif .=="Hatchet" then "Hacha"
+                elif .=="Furnace" then "Horno"
+                elif .=="SAR" then "Rifle SAR"
+                elif .=="Crossbow" then "Ballesta"
+                elif .=="Sheet Metal Door" then "Puerta de chapa"
+                elif .=="Jackhammer" then "Martillo neumático"
+                elif .=="Large Wood Box" then "Caja grande de madera"
+                else . end
+              | .time |= sub("Hours";"Horas") | .time |= sub("Hour";"Hora") | .time |= sub("Unknown";"Desconocido")
+            )' <<<"$NEW")
+
+            COUNT=$(jq length <<<"${NEW_TRANSLATED:-[]}")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
             if [ "${PREV}" = "[]" ]; then
               echo "⚡ Envío inicial de todos los drops de $PLATFORM"
-              NEW="$CURR"
-              COUNT=$(jq length <<<"${NEW:-[]}")
+              NEW_TRANSLATED="$CURR"
+              # Traducir toda la lista
+              NEW_TRANSLATED=$(jq -c 'map(
+                .name |=
+                  if .=="Pickaxe" then "Pico"
+                  elif .=="Hatchet" then "Hacha"
+                  elif .=="Furnace" then "Horno"
+                  elif .=="SAR" then "Rifle SAR"
+                  elif .=="Crossbow" then "Ballesta"
+                  elif .=="Sheet Metal Door" then "Puerta de chapa"
+                  elif .=="Jackhammer" then "Martillo neumático"
+                  elif .=="Large Wood Box" then "Caja grande de madera"
+                  else . end
+                | .time |= sub("Hours";"Horas") | .time |= sub("Hour";"Hora") | .time |= sub("Unknown";"Desconocido")
+              )' <<<"$NEW_TRANSLATED")
+              COUNT=$(jq length <<<"${NEW_TRANSLATED:-[]}")
             fi
 
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
-              FIRST_THUMB=$(jq -r '.[0].img' <<<"$NEW")
-              DESC=$(jq -r 'map(.name + " ⏱ " + .time) | join("\n")' <<<"$NEW")
-              TOTAL=$(jq length <<<"$NEW")
+              FIRST_THUMB=$(jq -r '.[0].img' <<<"$NEW_TRANSLATED")
+              DESC=$(jq -r 'map(.name + " ⏱ " + .time) | join("\n")' <<<"$NEW_TRANSLATED")
+              TOTAL=$(jq length <<<"$NEW_TRANSLATED")
 
               EMBED=$(jq -n --arg title "🎁 Nuevos Drops ${PLATFORM^} | Total: $TOTAL" \
                          --arg url "$URL" \
