@@ -90,15 +90,14 @@ jobs:
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
             ')
-
             COUNT=$(jq length <<<"${NEW:-[]}")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-            # Envío inicial: si state.json vacío, enviar todos
-            if [ "$(jq length <<<"$PREV")" -eq 0 ]; then
+            # Enviar todos la primera vez si state.json está vacío
+            if [ "${PREV}" = "[]" ]; then
               echo "⚡ Envío inicial de todos los drops de $PLATFORM"
               NEW="$CURR"
-              COUNT=$(jq length <<<"$NEW")
+              COUNT=$(jq length <<<"${NEW:-[]}")
             fi
 
             if [ "$COUNT" -eq 0 ]; then
@@ -106,12 +105,11 @@ jobs:
             else
               EMBEDS=$(jq -n --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
                 { embeds: $drops | map({
-                    title: ("🎁 **" + .name + "**"),
-                    description: "⏱ **" + .time + "**  • Plataforma: `" + $platform + "`",
+                    title: ("🎁 Nuevo Drop: " + .name),
+                    description: ("⏱ " + .time + " • Plataforma: " + $platform),
                     color: $color,
                     image: { url: .img },
-                    thumbnail: { url: .img },
-                    footer: { text:"Rust Drops Monitor | Plataforma: " + $platform },
+                    footer: { text:"Rust Drops Monitor" },
                     timestamp: now|todate
                 }) }
               ')
@@ -122,13 +120,12 @@ jobs:
               curl -s -X POST -H "Content-Type: application/json" --data-binary "$EMBEDS" "$DISCORD_WEBHOOK"
             fi
 
-            # 🔹 Actualizar state.json con CURR directamente
+            # Actualizar state.json
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
-          # Colores neón para Twitch y Kick
-          send_platform twitch twitch.json 0x9146FF
-          send_platform kick kick.json 0x1ED760
+          send_platform twitch twitch.json 6570404
+          send_platform kick kick.json 3066993
 
       - name: Commit state.json
         run: |
