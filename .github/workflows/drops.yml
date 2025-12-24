@@ -3,7 +3,7 @@ name: Rust Drops Monitor
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
 
 jobs:
   drops:
@@ -54,7 +54,8 @@ jobs:
               boxes.map(b => {
                 const img =
                   b.querySelector('video img')?.src ||
-                  b.querySelector('video source')?.src?.replace('.mp4', '.jpg');
+                  b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
+                  null;
 
                 const streamerLinks = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
                   .map(a => ({
@@ -70,7 +71,7 @@ jobs:
                   img,
                   streamers: streamerLinks
                 };
-              }).filter(d => d.img && d.id)
+              }).filter(d => d.id)
             );
 
             fs.writeFileSync(file, JSON.stringify(drops, null, 2));
@@ -120,7 +121,7 @@ jobs:
               i=1
               jq -c '.[]' <<<"$LIST" | while read DROP; do
                 # --- Limpiar y traducir nombre ---
-                NAME=$(jq -r '.name // "Drop"' <<<"$DROP" | tr -d '\n\r\u00A0' | xargs)
+                NAME=$(jq -r '.name // "Drop"' <<<"$DROP" | tr -d '\n\r\u00A0' | sed 's/&nbsp;//g' | xargs)
                 NAME=$(jq -n --arg n "$NAME" '
                   $n |
                   if test("Pickaxe";"i") then "Pico"
@@ -188,8 +189,16 @@ jobs:
                 ' --raw-output)
 
                 # --- Limpiar TIME y traducir ---
-                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n\r\u00A0' | xargs)
+                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n\r\u00A0' | sed 's/&nbsp;//g' | xargs)
                 TIME=$(echo "$TIME" | sed -E 's/[Hh]ours?/Horas/g; s/Unknown/Desconocido/')
+
+                # --- Imagen ---
+                IMG=$(jq -r '.img // ""' <<<"$DROP")
+                if [[ "$IMG" == "" ]]; then
+                  IMG="https://rust.facepunch.com/default-drop.jpg"
+                elif [[ "$IMG" == /* ]]; then
+                  IMG="https://rust.facepunch.com$IMG"
+                fi
 
                 if [ "$TYPE" = "Exclusivo" ]; then
                   STREAMERS=$(jq -r '[.streamers[] | "[" + .name + "](" + .url + ")"] | join(", ")' <<<"$DROP")
