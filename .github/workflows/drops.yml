@@ -24,121 +24,106 @@ jobs:
           npm install playwright
           npx playwright install chromium
 
-      - name: Create state.json if missing
+      - name: Load previous state
         run: |
           if [ ! -f state.json ]; then
             echo '{"twitch":[],"kick":[]}' > state.json
           fi
 
-      - name: Create scraper
+      - name: Scrape Twitch drops
         run: |
-          cat > scrape.js <<'JS'
+          node <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
 
           (async () => {
-            const url = process.argv[2];
-            const out = process.argv[3];
-
             const browser = await chromium.launch();
-            const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+            const page = await browser.newPage();
+            await page.goto('https://twitch.facepunch.com/', { waitUntil: 'networkidle' });
 
-            await page.goto(url, { waitUntil: 'domcontentloaded' });
-            await page.waitForSelector('a.drop-box', { timeout: 20000 });
-
-            await page.evaluate(async () => {
-              for (let i = 0; i < 10; i++) {
-                window.scrollBy(0, window.innerHeight);
-                await new Promise(r => setTimeout(r, 600));
-              }
-            });
-
-            const drops = await page.evaluate(() =>
-              [...document.querySelectorAll('a.drop-box')].map(b => ({
-                id: b.querySelector('.drop-counter')?.dataset.itemid,
-                name: b.querySelector('.drop-type')?.innerText,
-                time: b.querySelector('.drop-time span')?.innerText,
-                img:
-                  b.querySelector('video img')?.src ||
-                  b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
-                  null
-              })).filter(d => d.id)
+            const drops = await page.$$eval('.drop-box', boxes =>
+              boxes.map(b => ({
+                name: b.querySelector('.drop-type')?.innerText || 'Drop',
+                time: b.querySelector('.drop-time span')?.innerText || 'Unknown',
+                img: b.querySelector('img')?.src || null
+              })).filter(d => d.img)
             );
 
-            fs.writeFileSync(out, JSON.stringify(drops, null, 2));
+            fs.writeFileSync('twitch.json', JSON.stringify(drops, null, 2));
             await browser.close();
           })();
           JS
 
-      - name: Scrape Twitch & Kick
+      - name: Scrape Kick drops
         run: |
-          node scrape.js https://twitch.facepunch.com/ twitch.json
-          node scrape.js https://kick.facepunch.com/ kick.json
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
 
-      - name: Notify Discord (new drops only)
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            await page.goto('https://kick.facepunch.com/', { waitUntil: 'networkidle' });
+
+            const drops = await page.$$eval('.drop-box', boxes =>
+              boxes.map(b => ({
+                name: b.querySelector('.drop-type')?.innerText || 'Drop',
+                time: b.querySelector('.drop-time span')?.innerText || 'Unknown',
+                img: b.querySelector('img')?.src || null
+              })).filter(d => d.img)
+            );
+
+            fs.writeFileSync('kick.json', JSON.stringify(drops, null, 2));
+            await browser.close();
+          })();
+          JS
+
+      - name: Send Discord notifications
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
           send_platform () {
             PLATFORM=$1
             FILE=$2
-            URL=$3
-            COLOR=$4
+            COLOR=$3
 
-            PREV=$(jq -r ".${PLATFORM}[]" state.json | sort)
-            CURR=$(jq -r '.[].id' "$FILE" | sort)
-            NEW=$(comm -13 <(echo "$PREV") <(echo "$CURR"))
+            PREV=$(jq -r ".$PLATFORM | map(.img)" state.json)
+            CURR=$(jq -r 'map(.img)' "$FILE")
 
-            [ -z "$NEW" ] && return
-
-            EMBEDS="[]"
-
-            for ID in $NEW; do
-              DROP=$(jq ".[] | select(.id==\"$ID\")" "$FILE")
-
-              EMBED=$(jq -c \
-                --arg name "$(jq -r .name <<<"$DROP")" \
-                --arg time "$(jq -r .time <<<"$DROP")" \
-                --arg img  "$(jq -r .img  <<<"$DROP")" \
-                --arg url "$URL" \
-                --argjson color "$COLOR" \
-                '{
-                  title: "🎁 Nuevo Drop Disponible",
-                  description: "**\($name)**\n⏱ \($time)",
-                  url: $url,
-                  color: $color,
-                  image: ($img | select(length>0) | {url:.}),
-                  footer: {text:"Rust Drops Monitor"},
-                  timestamp: now|todate
-                }')
-
-              EMBEDS=$(jq ". + [ $EMBED ]" <<<"$EMBEDS")
-            done
+            EMBEDS=$(jq -n --argjson prev "$PREV" --argjson curr "$CURR" '
+              [ $curr[] | select(. as $i | $prev | index($i) | not) ]
+            ')
 
             COUNT=$(jq length <<<"$EMBEDS")
+            if [ "$COUNT" -eq 0 ]; then
+              echo "ℹ️ No hay nuevos drops en $PLATFORM"
+              return
+            fi
 
-if [ "$COUNT" -eq 0 ]; then
-  echo "ℹ️ No hay nuevos drops en $PLATFORM"
-  return
-fi
-
-curl -s -X POST \
-  -H "Content-Type: application/json" \
-  -d "{\"embeds\":$EMBEDS}" \
-  "$DISCORD_WEBHOOK"
-
-            jq --arg p "$PLATFORM" \
-               --argjson ids "$(jq '[.[].id]' "$FILE")" \
-               '.[$p]=$ids' state.json > tmp.json && mv tmp.json state.json
+            jq -n --argjson drops "$EMBEDS" --arg p "$PLATFORM" --argjson c "$COLOR" '
+              {
+                embeds: $drops | map({
+                  title: "🎁 Nuevo Drop " + (.),
+                  description: "Plataforma: " + $p,
+                  color: $c,
+                  image: { url: . }
+                })
+              }
+            ' | curl -s -X POST -H "Content-Type: application/json" -d @- "$WEBHOOK"
           }
 
-          send_platform twitch twitch.json https://twitch.facepunch.com/ 6570406
-          send_platform kick   kick.json   https://kick.facepunch.com/   3066993
+          send_platform twitch twitch.json 6570404
+          send_platform kick kick.json 3066993
 
-      - name: Commit state
+          jq -n \
+            --argjson t "$(cat twitch.json)" \
+            --argjson k "$(cat kick.json)" \
+            '{twitch:$t,kick:$k}' > state.json
+
+      - name: Save state
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "bot"
+          git config user.email "bot@github"
           git add state.json
-          git commit -m "update drop state" || echo "No changes"
-          git push
+          git commit -m "update state" || true
+          git push || true
