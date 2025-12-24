@@ -44,12 +44,7 @@ jobs:
                 const type = b.querySelector('.drop-type')?.innerText || 'Drop';
                 const time = b.querySelector('.drop-time span')?.innerText || 'Unknown';
                 const img = b.querySelector('video img')?.src || b.querySelector('video source')?.src?.replace('.mp4', '.jpg');
-                let emoji = '🎁';
-                if (/pickaxe/i.test(type)) emoji = '⛏️';
-                else if (/hatchet/i.test(type)) emoji = '🪓';
-                else if (/furnace/i.test(type)) emoji = '🔥';
-                else if (/weapon|sar|crossbow/i.test(type)) emoji = '🔫';
-                return { name: type, time, img, emoji };
+                return { name: type, time, img };
               }).filter(d => d.img)
             );
             fs.writeFileSync('twitch.json', JSON.stringify(drops, null, 2));
@@ -71,12 +66,7 @@ jobs:
                 const type = b.querySelector('.drop-type')?.innerText || 'Drop';
                 const time = b.querySelector('.drop-time span')?.innerText || 'Unknown';
                 const img = b.querySelector('video img')?.src || b.querySelector('video source')?.src?.replace('.mp4', '.jpg');
-                let emoji = '🎁';
-                if (/pickaxe/i.test(type)) emoji = '⛏️';
-                else if (/hatchet/i.test(type)) emoji = '🪓';
-                else if (/furnace/i.test(type)) emoji = '🔥';
-                else if (/weapon|sar|crossbow/i.test(type)) emoji = '🔫';
-                return { name: type, time, img, emoji };
+                return { name: type, time, img };
               }).filter(d => d.img)
             );
             fs.writeFileSync('kick.json', JSON.stringify(drops, null, 2));
@@ -84,7 +74,7 @@ jobs:
           })();
           JS
 
-      - name: Notify Discord (5 drops por embed, emojis, contador)
+      - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
@@ -92,21 +82,20 @@ jobs:
             PLATFORM=$1
             FILE=$2
             COLOR=$3
-            GROUP_SIZE=5
+            URL=$4
 
             PREV=$(jq -c ".${PLATFORM} // []" state.json)
             CURR=$(jq -c '.' "$FILE" 2>/dev/null || echo '[]')
             PREV="${PREV:-[]}"
             CURR="${CURR:-[]}"
 
-            # Detectar nuevos drops
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
             ')
+
             COUNT=$(jq length <<<"${NEW:-[]}")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-            # Enviar todos la primera vez si state.json está vacío
             if [ "${PREV}" = "[]" ]; then
               echo "⚡ Envío inicial de todos los drops de $PLATFORM"
               NEW="$CURR"
@@ -116,41 +105,40 @@ jobs:
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
+              FIRST_THUMB=$(jq -r '.[0].img' <<<"$NEW")
+              DESC=$(jq -r 'map(.name + " ⏱ " + .time) | join("\n")' <<<"$NEW")
               TOTAL=$(jq length <<<"$NEW")
-              EMBEDS="[]"
 
-              for i in $(seq 0 $((TOTAL-1)) ); do
-                DROP=$(jq ".[$i]" <<<"$NEW")
-                IDX=$(( i % GROUP_SIZE ))
-
-                if [ "$IDX" -eq 0 ]; then
-                  THUMB=$(jq -r '.img' <<<"$DROP")
-                  EMBED=$(jq -n --arg color "$COLOR" --arg thumb "$THUMB" --arg timestamp "$(date -Iseconds)" \
-                    '{title:"🎁 Nuevos Drops", description:"", color: ($color | tonumber), thumbnail:{url:$thumb}, footer:{text:"Rust Drops Monitor"}, timestamp:$timestamp}')
-                fi
-
-                DESC=$(jq -r '.emoji + " " + .name + " ⏱ " + .time + "\n"' <<<"$DROP")
-                EMBED=$(jq --arg desc "$DESC" '.description += $desc' <<<"$EMBED")
-
-                if [ "$IDX" -eq $((GROUP_SIZE-1)) ] || [ "$i" -eq $((TOTAL-1)) ]; then
-                  TOTAL_DROPS=$(jq length <<<"$NEW")
-                  EMBED=$(jq --arg total "$TOTAL_DROPS" '.title += " | Total: " + $total' <<<"$EMBED")
-                  EMBEDS=$(jq --argjson new "$EMBED" '. += [$new]' <<<"$EMBEDS")
-                fi
-              done
+              EMBED=$(jq -n --arg title "🎁 Nuevos Drops ${PLATFORM^} | Total: $TOTAL" \
+                         --arg url "$URL" \
+                         --arg desc "$DESC" \
+                         --arg thumb "$FIRST_THUMB" \
+                         --argjson color "$COLOR" \
+                         --arg timestamp "$(date -Iseconds)" \
+                         '{
+                            title: $title,
+                            url: $url,
+                            description: $desc,
+                            color: $color,
+                            thumbnail: {url:$thumb},
+                            footer:{text:"Rust Drops Monitor"},
+                            timestamp:$timestamp
+                          }')
 
               echo "DEBUG: JSON a enviar a Discord:"
-              echo "$EMBEDS" | jq .
+              echo "$EMBED" | jq .
 
-              curl -s -X POST -H "Content-Type: application/json" --data-binary "{\"embeds\":$EMBEDS}" "$DISCORD_WEBHOOK"
+              curl -s -X POST -H "Content-Type: application/json" --data-binary "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
             fi
 
-            # Actualizar state.json
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
-          send_platform twitch twitch.json 9502720
-          send_platform kick kick.json 2003190
+          # Twitch violeta: 9502720
+          send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/
+
+          # Kick verde lima: 2003190
+          send_platform kick kick.json 2003190 https://kick.facepunch.com/
 
       - name: Commit state.json
         run: |
