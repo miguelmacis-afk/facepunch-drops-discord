@@ -3,14 +3,14 @@ name: Rust Drops Monitor
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/15 * * * *"   # cada 15 minutos
+    - cron: "*/15 * * * *"
 
 jobs:
   drops:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repo
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
       - name: 🟢 Setup Node
@@ -24,13 +24,13 @@ jobs:
           npm install playwright
           npx playwright install chromium
 
-      - name: 🧪 Crear state.json si no existe
+      - name: 📄 Crear state.json si no existe
         run: |
           if [ ! -f state.json ]; then
             echo '{"twitch":[],"kick":[]}' > state.json
           fi
 
-      - name: 🌐 Crear scraper
+      - name: 🧪 Crear scraper
         run: |
           cat <<'JS' > scrape.js
           const { chromium } = require('playwright');
@@ -75,39 +75,44 @@ jobs:
           node scrape.js https://twitch.facepunch.com/ twitch.json
           node scrape.js https://kick.facepunch.com/ kick.json
 
-      - name: 🔔 Detectar drops nuevos + enviar Discord
+      - name: 🔔 Detectar drops nuevos y avisar
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
           build_embed() {
-            jq -n \
-              --arg name "$1" \
-              --arg time "$2" \
-              --arg img "$3" \
-              --arg url "$4" \
-              --argjson color "$5" '
-              {
-                title: "🎁 Nuevo Drop Disponible",
-                description: "**" + $name + "**\n⏱ " + $time,
-                url: $url,
-                color: $color,
-                image: ($img | select(length > 0) | {url: .}),
-                footer: { text: "Rust Drops Monitor • Facepunch" },
-                timestamp: now | todate
-              }'
+            NAME="$1"
+            TIME="$2"
+            IMG="$3"
+            URL="$4"
+            COLOR="$5"
+
+            jq -n --arg name "$NAME" \
+                  --arg time "$TIME" \
+                  --arg img "$IMG" \
+                  --arg url "$URL" \
+                  --argjson color "$COLOR" <<'JQ'
+{
+  title: "🎁 Nuevo Drop Disponible",
+  description: "**\($name)**\n⏱ \($time)",
+  url: $url,
+  color: $color,
+  image: ($img | select(length > 0) | {url: .}),
+  footer: { text: "Rust Drops Monitor • Facepunch" },
+  timestamp: now | todate
+}
+JQ
           }
 
           send_platform() {
-            PLATFORM=$1
-            FILE=$2
-            URL=$3
-            COLOR=$4
+            PLATFORM="$1"
+            FILE="$2"
+            URL="$3"
+            COLOR="$4"
 
-            PREV=$(jq -r ".${PLATFORM}[]" state.json)
-            CURR=$(jq -r '.[].id' "$FILE")
+            PREV=$(jq -r ".${PLATFORM}[]" state.json | sort)
+            CURR=$(jq -r '.[].id' "$FILE" | sort)
 
-            NEW_IDS=$(comm -13 <(echo "$PREV" | sort) <(echo "$CURR" | sort))
-
+            NEW_IDS=$(comm -13 <(echo "$PREV") <(echo "$CURR"))
             [ -z "$NEW_IDS" ] && return
 
             EMBEDS=()
@@ -123,12 +128,8 @@ jobs:
               )")
             done
 
-            jq -n --argjson e "$(printf '%s\n' "${EMBEDS[@]}" | jq -s '.')" \
-              '{embeds:$e}' | \
-              curl -s -X POST \
-                -H "Content-Type: application/json" \
-                -d @- \
-                "$DISCORD_WEBHOOK"
+            jq -n --argjson e "$(printf '%s\n' "${EMBEDS[@]}" | jq -s '.')" '{embeds:$e}' | \
+              curl -s -X POST -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK"
 
             jq --arg p "$PLATFORM" \
                --argjson ids "$(jq '[.[].id]' "$FILE")" \
