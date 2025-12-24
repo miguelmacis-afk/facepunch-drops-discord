@@ -72,60 +72,53 @@ jobs:
           })();
           JS
 
-- name: Notify Discord
-  env:
-    DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-  run: |
-    send_platform () {
-      PLATFORM=$1
-      FILE=$2
-      COLOR=$3
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          send_platform () {
+            PLATFORM=$1
+            FILE=$2
+            COLOR=$3
 
-      # Leer drops previos y actuales
-      PREV=$(jq -c ".${PLATFORM} // []" state.json)
-      CURR=$(jq -c '.' "$FILE" 2>/dev/null || echo '[]')
-      PREV="${PREV:-[]}"
-      CURR="${CURR:-[]}"
+            PREV=$(jq -c ".${PLATFORM} // []" state.json)
+            CURR=$(jq -c '.' "$FILE" 2>/dev/null || echo '[]')
+            PREV="${PREV:-[]}"
+            CURR="${CURR:-[]}"
 
-      # Detectar nuevos drops
-      NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
-        [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
-      ')
+            NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
+              [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
+            ')
 
-      COUNT=$(jq length <<<"${NEW:-[]}")
-      echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
+            COUNT=$(jq length <<<"${NEW:-[]}")
+            echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-      if [ "$COUNT" -eq 0 ]; then
-        echo "ℹ️ No hay nuevos drops en $PLATFORM"
-      else
-        # Construir embeds válidos
-        EMBEDS=$(jq -c --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
-          { embeds: $drops | map({
-              title: ("🎁 Nuevo Drop: " + .name),
-              description: ("⏱ " + .time + " • Plataforma: " + $platform),
-              color: $color,
-              image: { url: .img },
-              footer: { text:"Rust Drops Monitor" },
-              timestamp: now|todate
-          }) }
-        ')
+            if [ "$COUNT" -eq 0 ]; then
+              echo "ℹ️ No hay nuevos drops en $PLATFORM"
+            else
+              EMBEDS=$(jq -c --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
+                { embeds: $drops | map({
+                    title: ("🎁 Nuevo Drop: " + .name),
+                    description: ("⏱ " + .time + " • Plataforma: " + $platform),
+                    color: $color,
+                    image: { url: .img },
+                    footer: { text:"Rust Drops Monitor" },
+                    timestamp: now|todate
+                }) }
+              ')
 
-        # Debug: mostrar JSON
-        echo "DEBUG: JSON a enviar a Discord:"
-        echo "$EMBEDS" | jq .
+              # Debug JSON
+              echo "DEBUG: JSON a enviar a Discord:"
+              echo "$EMBEDS" | jq .
 
-        # Enviar al Discord webhook usando --data-binary para evitar escapes
-        curl -s -X POST -H "Content-Type: application/json" --data-binary "$EMBEDS" "$DISCORD_WEBHOOK"
-      fi
+              curl -s -X POST -H "Content-Type: application/json" --data-binary "$EMBEDS" "$DISCORD_WEBHOOK"
+            fi
 
-      # Actualizar state.json
-      jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
-    }
+            jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
+          }
 
-    # Ejecutar para Twitch y Kick
-    send_platform twitch twitch.json 6570404
-    send_platform kick kick.json 3066993
-
+          send_platform twitch twitch.json 6570404
+          send_platform kick kick.json 3066993
 
       - name: Commit state.json
         run: |
@@ -134,4 +127,3 @@ jobs:
           git add state.json
           git commit -m "Update state.json" || echo "No changes to commit"
           git push || echo "Nothing to push"
-
