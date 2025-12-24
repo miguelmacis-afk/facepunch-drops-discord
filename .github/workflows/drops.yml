@@ -119,11 +119,8 @@ jobs:
 
               i=1
               jq -c '.[]' <<<"$LIST" | while read DROP; do
-                NAME=$(jq -r '.name // "Drop"' <<<"$DROP" | tr -d '\n' | xargs)
-                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n' | xargs)
-                IMG=$(jq -r '.img' <<<"$DROP")
-
-                # Traducción de nombres
+                # --- Limpiar y traducir nombre ---
+                NAME=$(jq -r '.name // "Drop"' <<<"$DROP" | tr -d '\n\r\u00A0' | xargs)
                 NAME=$(jq -n --arg n "$NAME" '
                   $n |
                   if test("Pickaxe";"i") then "Pico"
@@ -190,8 +187,9 @@ jobs:
                   else $n end
                 ' --raw-output)
 
-                # Traducción tiempo
-                TIME=$(echo "$TIME" | sed -E 's/Hours?|hours?/Horas/g; s/Unknown/Desconocido/')
+                # --- Limpiar TIME y traducir ---
+                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n\r\u00A0' | xargs)
+                TIME=$(echo "$TIME" | sed -E 's/[Hh]ours?/Horas/g; s/Unknown/Desconocido/')
 
                 if [ "$TYPE" = "Exclusivo" ]; then
                   STREAMERS=$(jq -r '[.streamers[] | "[" + .name + "](" + .url + ")"] | join(", ")' <<<"$DROP")
