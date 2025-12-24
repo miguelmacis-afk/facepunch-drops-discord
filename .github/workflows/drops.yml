@@ -40,11 +40,17 @@ jobs:
             const page = await browser.newPage();
             await page.goto('https://twitch.facepunch.com/', { waitUntil: 'networkidle' });
             const drops = await page.$$eval('a.drop-box', boxes =>
-              boxes.map(b => ({
-                name: b.querySelector('.drop-type')?.innerText || 'Drop',
-                time: b.querySelector('.drop-time span')?.innerText || 'Unknown',
-                img: b.querySelector('video img')?.src || b.querySelector('video source')?.src?.replace('.mp4', '.jpg')
-              })).filter(d => d.img)
+              boxes.map(b => {
+                const type = b.querySelector('.drop-type')?.innerText || 'Drop';
+                const time = b.querySelector('.drop-time span')?.innerText || 'Unknown';
+                const img = b.querySelector('video img')?.src || b.querySelector('video source')?.src?.replace('.mp4', '.jpg');
+                let emoji = '🎁';
+                if (/pickaxe/i.test(type)) emoji = '⛏️';
+                else if (/hatchet/i.test(type)) emoji = '🪓';
+                else if (/furnace/i.test(type)) emoji = '🔥';
+                else if (/weapon|sar|crossbow/i.test(type)) emoji = '🔫';
+                return { name: type, time, img, emoji };
+              }).filter(d => d.img)
             );
             fs.writeFileSync('twitch.json', JSON.stringify(drops, null, 2));
             await browser.close();
@@ -61,18 +67,24 @@ jobs:
             const page = await browser.newPage();
             await page.goto('https://kick.facepunch.com/', { waitUntil: 'networkidle' });
             const drops = await page.$$eval('a.drop-box', boxes =>
-              boxes.map(b => ({
-                name: b.querySelector('.drop-type')?.innerText || 'Drop',
-                time: b.querySelector('.drop-time span')?.innerText || 'Unknown',
-                img: b.querySelector('video img')?.src || b.querySelector('video source')?.src?.replace('.mp4', '.jpg')
-              })).filter(d => d.img)
+              boxes.map(b => {
+                const type = b.querySelector('.drop-type')?.innerText || 'Drop';
+                const time = b.querySelector('.drop-time span')?.innerText || 'Unknown';
+                const img = b.querySelector('video img')?.src || b.querySelector('video source')?.src?.replace('.mp4', '.jpg');
+                let emoji = '🎁';
+                if (/pickaxe/i.test(type)) emoji = '⛏️';
+                else if (/hatchet/i.test(type)) emoji = '🪓';
+                else if (/furnace/i.test(type)) emoji = '🔥';
+                else if (/weapon|sar|crossbow/i.test(type)) emoji = '🔫';
+                return { name: type, time, img, emoji };
+              }).filter(d => d.img)
             );
             fs.writeFileSync('kick.json', JSON.stringify(drops, null, 2));
             await browser.close();
           })();
           JS
 
-      - name: Notify Discord
+      - name: Notify Discord (5 drops por embed, emojis, contador)
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
@@ -80,6 +92,7 @@ jobs:
             PLATFORM=$1
             FILE=$2
             COLOR=$3
+            GROUP_SIZE=5
 
             PREV=$(jq -c ".${PLATFORM} // []" state.json)
             CURR=$(jq -c '.' "$FILE" 2>/dev/null || echo '[]')
@@ -103,29 +116,41 @@ jobs:
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
-              EMBEDS=$(jq -n --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
-                { embeds: $drops | map({
-                    title: ("🎁 Nuevo Drop: " + .name),
-                    description: ("⏱ " + .time + " • Plataforma: " + $platform),
-                    color: $color,
-                    image: { url: .img },
-                    footer: { text:"Rust Drops Monitor" },
-                    timestamp: now|todate
-                }) }
-              ')
+              TOTAL=$(jq length <<<"$NEW")
+              EMBEDS="[]"
+
+              for i in $(seq 0 $((TOTAL-1)) ); do
+                DROP=$(jq ".[$i]" <<<"$NEW")
+                IDX=$(( i % GROUP_SIZE ))
+
+                if [ "$IDX" -eq 0 ]; then
+                  THUMB=$(jq -r '.img' <<<"$DROP")
+                  EMBED=$(jq -n --arg color "$COLOR" --arg thumb "$THUMB" --arg timestamp "$(date -Iseconds)" \
+                    '{title:"🎁 Nuevos Drops", description:"", color: ($color | tonumber), thumbnail:{url:$thumb}, footer:{text:"Rust Drops Monitor"}, timestamp:$timestamp}')
+                fi
+
+                DESC=$(jq -r '.emoji + " " + .name + " ⏱ " + .time + "\n"' <<<"$DROP")
+                EMBED=$(jq --arg desc "$DESC" '.description += $desc' <<<"$EMBED")
+
+                if [ "$IDX" -eq $((GROUP_SIZE-1)) ] || [ "$i" -eq $((TOTAL-1)) ]; then
+                  TOTAL_DROPS=$(jq length <<<"$NEW")
+                  EMBED=$(jq --arg total "$TOTAL_DROPS" '.title += " | Total: " + $total' <<<"$EMBED")
+                  EMBEDS=$(jq --argjson new "$EMBED" '. += [$new]' <<<"$EMBEDS")
+                fi
+              done
 
               echo "DEBUG: JSON a enviar a Discord:"
               echo "$EMBEDS" | jq .
 
-              curl -s -X POST -H "Content-Type: application/json" --data-binary "$EMBEDS" "$DISCORD_WEBHOOK"
+              curl -s -X POST -H "Content-Type: application/json" --data-binary "{\"embeds\":$EMBEDS}" "$DISCORD_WEBHOOK"
             fi
 
             # Actualizar state.json
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
-          send_platform twitch twitch.json 6570404
-          send_platform kick kick.json 3066993
+          send_platform twitch twitch.json 0x9146FF
+          send_platform kick kick.json 0x1ED760
 
       - name: Commit state.json
         run: |
