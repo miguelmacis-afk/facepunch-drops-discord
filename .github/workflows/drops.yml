@@ -94,7 +94,7 @@ jobs:
             COUNT=$(jq length <<<"${NEW:-[]}")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-            # Envío inicial: si state.json vacío, usar todos los drops de CURR
+            # Envío inicial: si state.json vacío, enviar todos
             if [ "$(jq length <<<"$PREV")" -eq 0 ]; then
               echo "⚡ Envío inicial de todos los drops de $PLATFORM"
               NEW="$CURR"
@@ -122,13 +122,13 @@ jobs:
               curl -s -X POST -H "Content-Type: application/json" --data-binary "$EMBEDS" "$DISCORD_WEBHOOK"
             fi
 
-            # Actualizar state.json con CURR directamente como JSON
-            echo "$CURR" | jq --argjson ids "$(cat)" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
+            # 🔹 Actualizar state.json con CURR directamente
+            jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
-          # Colores neón distintos para Twitch y Kick
-          send_platform twitch twitch.json 0x9146FF   # Twitch Purple
-          send_platform kick kick.json 0x1ED760      # Kick Green
+          # Colores neón para Twitch y Kick
+          send_platform twitch twitch.json 0x9146FF
+          send_platform kick kick.json 0x1ED760
 
       - name: Commit state.json
         run: |
