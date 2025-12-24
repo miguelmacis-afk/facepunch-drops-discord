@@ -3,7 +3,7 @@ name: Rust Drops Monitor
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"   # Ejecuta cada 5 min, controlamos 15 min por código
+    - cron: "*/5 * * * *"
 
 jobs:
   drops:
@@ -24,7 +24,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}
 
-      - name: Install dependencies
+      - name: Install Playwright
         run: |
           npm install playwright
           npx playwright install chromium
@@ -35,61 +35,57 @@ jobs:
             echo '{"twitch":[],"kick":[],"lastRun":0}' > state.json
           fi
 
-      - name: Check 15 min lock
+      - name: 15 min lock
         run: |
           LAST=$(jq -r '.lastRun // 0' state.json)
           NOW=$(date +%s)
           if [ $((NOW - LAST)) -lt 900 ]; then
-            echo "⏱️ Lock activo: aún no pasaron 15 minutos"
+            echo "⏱️ Lock activo"
             exit 0
           fi
 
-      - name: Scrape Twitch Drops
+      - name: Scrape Twitch & Kick (single browser)
         run: |
           node <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
 
+          async function scrape(page, url, file) {
+            for (let i = 0; i < 3; i++) {
+              try {
+                await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+                const drops = await page.$$eval('a.drop-box', boxes =>
+                  boxes.map(b => {
+                    const img =
+                      b.querySelector('video img')?.src ||
+                      b.querySelector('video source')?.src?.replace('.mp4', '.jpg');
+                    const id = b.getAttribute('href') || img;
+                    return {
+                      id,
+                      name: b.querySelector('.drop-type')?.innerText || 'Drop',
+                      time: b.querySelector('.drop-time span')?.innerText || 'Unknown',
+                      img
+                    };
+                  }).filter(d => d.img && d.id)
+                );
+                fs.writeFileSync(file, JSON.stringify(drops, null, 2));
+                return;
+              } catch (e) {
+                if (i === 2) throw e;
+              }
+            }
+          }
+
           (async () => {
             const browser = await chromium.launch();
-            const page = await browser.newPage();
-            await page.goto('https://twitch.facepunch.com/', { waitUntil: 'networkidle' });
+            const page1 = await browser.newPage();
+            const page2 = await browser.newPage();
 
-            const drops = await page.$$eval('a.drop-box', boxes =>
-              boxes.map(b => ({
-                name: b.querySelector('.drop-type')?.innerText || 'Drop',
-                time: b.querySelector('.drop-time span')?.innerText || 'Unknown',
-                img: b.querySelector('video img')?.src ||
-                     b.querySelector('video source')?.src?.replace('.mp4', '.jpg')
-              })).filter(d => d.img)
-            );
+            await Promise.all([
+              scrape(page1, 'https://twitch.facepunch.com/', 'twitch.json'),
+              scrape(page2, 'https://kick.facepunch.com/', 'kick.json')
+            ]);
 
-            fs.writeFileSync('twitch.json', JSON.stringify(drops, null, 2));
-            await browser.close();
-          })();
-          JS
-
-      - name: Scrape Kick Drops
-        run: |
-          node <<'JS'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
-
-          (async () => {
-            const browser = await chromium.launch();
-            const page = await browser.newPage();
-            await page.goto('https://kick.facepunch.com/', { waitUntil: 'networkidle' });
-
-            const drops = await page.$$eval('a.drop-box', boxes =>
-              boxes.map(b => ({
-                name: b.querySelector('.drop-type')?.innerText || 'Drop',
-                time: b.querySelector('.drop-time span')?.innerText || 'Unknown',
-                img: b.querySelector('video img')?.src ||
-                     b.querySelector('video source')?.src?.replace('.mp4', '.jpg')
-              })).filter(d => d.img)
-            );
-
-            fs.writeFileSync('kick.json', JSON.stringify(drops, null, 2));
             await browser.close();
           })();
           JS
@@ -97,6 +93,7 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DRY_RUN: false
         run: |
           send_platform () {
             PLATFORM=$1
@@ -107,8 +104,15 @@ jobs:
             PREV=$(jq -c ".${PLATFORM} // []" state.json)
             CURR=$(jq -c '.' "$FILE" 2>/dev/null || echo '[]')
 
+            # Evento terminado
+            if [ "$PREV" != "[]" ] && [ "$CURR" = "[]" ]; then
+              curl -s -X POST -H "Content-Type: application/json" \
+                --data "{\"content\":\"🛑 El evento de drops de **${PLATFORM^}** ha finalizado.\"}" \
+                "$DISCORD_WEBHOOK"
+            fi
+
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
-              [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
+              [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
             ')
 
             [ "$PREV" = "[]" ] && NEW="$CURR"
@@ -135,19 +139,24 @@ jobs:
             COUNT=$(jq length <<<"$NEW_TR")
             [ "$COUNT" -eq 0 ] && return
 
-            DESC=$(jq -r 'map(.name + " ⏱ " + .time) | join("\n")' <<<"$NEW_TR")
-            THUMB=$(jq -r '.[0].img' <<<"$NEW_TR")
+            jq -c '.[]' <<<"$NEW_TR" | while read DROP; do
+              NAME=$(jq -r '.name' <<<"$DROP")
+              TIME=$(jq -r '.time' <<<"$DROP")
+              IMG=$(jq -r '.img' <<<"$DROP")
 
-            EMBED=$(jq -n --arg title "🎁 Nuevos Drops ${PLATFORM^}" \
-              --arg url "$URL" \
-              --arg desc "$DESC" \
-              --arg thumb "$THUMB" \
-              --argjson color "$COLOR" \
-              --arg ts "$(date -Iseconds)" \
-              '{title:$title,url:$url,description:$desc,color:$color,thumbnail:{url:$thumb},timestamp:$ts}')
+              EMBED=$(jq -n \
+                --arg title "🎁 Nuevo Drop ${PLATFORM^}" \
+                --arg url "$URL" \
+                --arg desc "$NAME ⏱ $TIME" \
+                --arg thumb "$IMG" \
+                --argjson color "$COLOR" \
+                --arg ts "$(date -Iseconds)" \
+                '{title:$title,url:$url,description:$desc,color:$color,thumbnail:{url:$thumb},timestamp:$ts}')
 
-            curl -s -X POST -H "Content-Type: application/json" \
-              --data-binary "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
+              [ "$DRY_RUN" = "true" ] || \
+                curl -s -X POST -H "Content-Type: application/json" \
+                --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
+            done
 
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp && mv tmp state.json
           }
@@ -163,6 +172,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+          git diff --quiet && exit 0
           git add state.json
-          git commit -m "Update drops state" || true
-          git push || true
+          git commit -m "Update drops state"
+          git push
