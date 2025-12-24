@@ -44,6 +44,6 @@ const fs = require('fs');
     }).filter(Boolean);
   });
 
-  fs.writeFileSync('twitch_imgs.txt', [...new Set(imgs)].join('\n'));
+  fs.writeFileSync('kick_imgs.txt', [...new Set(imgs)].join('\n'));
   await browser.close();
 })();
