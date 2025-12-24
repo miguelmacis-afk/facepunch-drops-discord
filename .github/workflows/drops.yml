@@ -31,10 +31,7 @@ jobs:
         run: |
           LAST=$(jq -r '.lastRun // 0' state.json)
           NOW=$(date +%s)
-          if [ $((NOW - LAST)) -lt 900 ]; then
-            echo "⏱️ Lock activo"
-            exit 0
-          fi
+          [ $((NOW - LAST)) -lt 900 ] && exit 0
 
       - name: Scrape Twitch & Kick
         run: |
@@ -45,27 +42,20 @@ jobs:
           async function scrape(url, file) {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-            await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+            await page.goto(url, { waitUntil: 'networkidle' });
 
             const drops = await page.$$eval('a.drop-box', boxes =>
-              boxes.map(b => {
-                const img =
+              boxes.map(b => ({
+                id: b.getAttribute('href') || null,
+                name: b.querySelector('.drop-type')?.innerText || '',
+                time: b.querySelector('.drop-time span')?.innerText || '',
+                img:
                   b.querySelector('video img')?.src ||
                   b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
-                  null;
-
-                const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
+                  '',
+                streamers: [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
                   .map(a => ({ name: a.innerText.trim(), url: a.href }))
-                  .filter(s => s.name && s.url);
-
-                return {
-                  id: b.getAttribute('href') || img,
-                  name: b.querySelector('.drop-type')?.innerText || 'Drop',
-                  time: b.querySelector('.drop-time span')?.innerText || '',
-                  img,
-                  streamers
-                };
-              }).filter(d => d.id)
+              })).filter(d => d.id)
             );
 
             fs.writeFileSync(file, JSON.stringify(drops, null, 2));
@@ -96,68 +86,37 @@ jobs:
             ')
             [ "$PREV" = "[]" ] && NEW="$CURR"
 
-            GENERAL=$(jq -c '[.[] | select(.streamers | length == 0)]' <<<"$NEW")
-            EXCLUSIVE=$(jq -c '[.[] | select(.streamers | length > 0)]' <<<"$NEW")
-
             send_list () {
-              TYPE=$1
-              LIST=$2
+              LIST=$1
               TOTAL=$(jq length <<<"$LIST")
               [ "$TOTAL" -eq 0 ] && return
-
               i=1
+
               jq -c '.[]' <<<"$LIST" | while read DROP; do
-                RAW_NAME=$(jq -r '.name' <<<"$DROP")
+                RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
 
                 NAME=$(jq -n --arg n "$RAW_NAME" '
+                  ($n // "") |
                   if test("Pickaxe";"i") then "Pico"
                   elif test("Hatchet";"i") then "Hacha"
-                  elif test("Ice Pickaxe";"i") then "Pico de hielo"
-                  elif test("Salvaged Icepick";"i") then "Icepick recuperado"
                   elif test("Jackhammer";"i") then "Martillo neumático"
-                  elif test("Hammer";"i") then "Martillo"
                   elif test("Crossbow";"i") then "Ballesta"
-                  elif test("Bow";"i") then "Arco"
-                  elif test("Assault Rifle";"i") then "Rifle de asalto"
-                  elif test("Bolt Action Rifle";"i") then "Rifle de cerrojo"
                   elif test("Semi-Automatic Rifle";"i") then "Rifle semiautomático"
-                  elif test("Custom SMG";"i") then "SMG personalizada"
-                  elif test("MP5";"i") then "MP5"
-                  elif test("Thompson";"i") then "Thompson"
-                  elif test("M249";"i") then "M249"
-                  elif test("Revolver";"i") then "Revólver"
-                  elif test("M92 Pistol";"i") then "Pistola M92"
-                  elif test("Pump Shotgun";"i") then "Escopeta de corredera"
-                  elif test("Double Barrel Shotgun";"i") then "Escopeta de doble cañón"
-                  elif test("Rocket Launcher";"i") then "Lanzacohetes"
-                  elif test("Sheet Metal Door";"i") then "Puerta de chapa"
-                  elif test("Garage Door";"i") then "Puerta de garaje"
                   elif test("Large Wood Box";"i") then "Caja grande de madera"
-                  elif test("Small Wood Box";"i") then "Caja pequeña de madera"
+                  elif test("Sheet Metal Door";"i") then "Puerta de chapa"
                   elif test("Furnace";"i") then "Horno"
-                  elif test("Large Furnace";"i") then "Horno grande"
                   else $n end
                 ' --raw-output)
 
-                TIME=$(jq -r '.time' <<<"$DROP" | tr -d '\n\r')
-
-                if [ -z "$(echo "$TIME" | tr -d '[:space:]')" ]; then
-                  TIME="Unknown"
-                fi
-
+                TIME=$(jq -r '.time // ""' <<<"$DROP")
+                [ -z "$(echo "$TIME" | tr -d '[:space:]')" ] && TIME="Unknown"
                 TIME=$(echo "$TIME" | perl -pe 's/\s*HOURS?/ Horas/i; s/Unknown/Desconocido/i')
 
                 IMG=$(jq -r '.img // ""' <<<"$DROP")
                 [ -z "$IMG" ] && IMG="https://rust.facepunch.com/default-drop.jpg"
 
-                if [ "$TYPE" = "Exclusivo" ]; then
-                  STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
-                  TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
-                  DESC="$NAME ⏱ $TIME | $STREAMERS"
-                else
-                  TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
-                  DESC="$NAME ⏱ $TIME"
-                fi
+                TITLE="🎁 Drop ${PLATFORM^} | $i/$TOTAL"
+                DESC="$NAME ⏱ $TIME"
 
                 EMBED=$(jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --arg img "$IMG" --argjson c "$COLOR" \
                   '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
@@ -169,9 +128,7 @@ jobs:
               done
             }
 
-            send_list "General" "$GENERAL"
-            send_list "Exclusivo" "$EXCLUSIVE"
-
+            send_list "$NEW"
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp && mv tmp state.json
           }
 
