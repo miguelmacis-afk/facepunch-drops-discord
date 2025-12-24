@@ -124,10 +124,10 @@ jobs:
                 IMG=$(jq -r '.img' <<<"$DROP")
 
                 # --- Evitar null ---
-                NAME=${NAME:-"Drop"}
-                TIME=${TIME:-"Desconocido"}
+                NAME=${NAME:-Drop}
+                TIME=${TIME:-Desconocido}
 
-                # --- Traducciones completas ---
+                # --- Traducción de nombres ---
                 NAME=$(jq -n --arg n "$NAME" '
                   $n |
                   if test("Pickaxe";"i") then "Pico"
@@ -191,9 +191,10 @@ jobs:
                   elif test("Cargo Pants";"i") then "Pantalones cargo"
                   elif test("Jacket";"i") then "Chaqueta"
                   elif test("Tactical Gloves";"i") then "Guantes tácticos"
-                  else . end
-                ')
+                  else $n end
+                ' --raw-output)
 
+                # Traducción tiempo
                 TIME=$(echo "$TIME" | sed -E 's/Hours?|hours?/Horas/g; s/Unknown/Desconocido/')
 
                 if [ "$TYPE" = "Exclusivo" ]; then
