@@ -120,10 +120,7 @@ jobs:
 
               i=1
               jq -c '.[]' <<<"$LIST" | while read DROP; do
-                # Nombre: limpio, sin eliminar caracteres especiales
                 NAME=$(jq -r '.name // "Drop"' <<<"$DROP" | xargs)
-
-                # Traducción de nombres
                 NAME=$(jq -n --arg n "$NAME" '
                   $n |
                   if test("Pickaxe";"i") then "Pico"
@@ -190,15 +187,12 @@ jobs:
                   else $n end
                 ' --raw-output)
 
-                # Tiempo: limpio y traducido
-                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n\r' | xargs)
-                TIME=$(echo "$TIME" | sed -E 's/[Hh]ours?/Horas/g; s/Unknown/Desconocido/')
+                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n\r')
+                TIME=$(echo "$TIME" | sed -E 's/[[:space:]]*[Hh]ours?/ Horas/g; s/Unknown/Desconocido/')
 
-                # Imagen
                 IMG=$(jq -r '.img // ""' <<<"$DROP")
                 [ -z "$IMG" ] && IMG="https://rust.facepunch.com/default-drop.jpg"
 
-                # Embed
                 if [ "$TYPE" = "Exclusivo" ]; then
                   STREAMERS=$(jq -r '[.streamers[] | "[" + .name + "](" + .url + ")"] | join(", ")' <<<"$DROP")
                   TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
