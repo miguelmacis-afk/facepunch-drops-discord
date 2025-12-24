@@ -72,49 +72,48 @@ jobs:
           })();
           JS
 
-- name: Notify Discord
-  env:
-    DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-  run: |
-    send_platform () {
-      PLATFORM=$1
-      FILE=$2
-      COLOR=$3
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          send_platform () {
+            PLATFORM=$1
+            FILE=$2
+            COLOR=$3
 
-      PREV=$(jq -c ".${PLATFORM} // []" state.json)
-      CURR=$(jq -c '.' "$FILE" 2>/dev/null || echo '[]')
-      PREV="${PREV:-[]}"
-      CURR="${CURR:-[]}"
+            PREV=$(jq -c ".${PLATFORM} // []" state.json)
+            CURR=$(jq -c '.' "$FILE" 2>/dev/null || echo '[]')
+            PREV="${PREV:-[]}"
+            CURR="${CURR:-[]}"
 
-      NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
-        [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
-      ')
+            NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
+              [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
+            ')
 
-      COUNT=$(jq length <<<"${NEW:-[]}")
-      if [ "$COUNT" -eq 0 ]; then
-        echo "ℹ️ No hay nuevos drops en $PLATFORM"
-      else
-        EMBEDS=$(jq -c --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
-          { embeds: $drops | map({
-              title: ("🎁 Nuevo Drop: " + .name),
-              description: ("⏱ " + .time + " • Plataforma: " + $platform),
-              color: $color,
-              image: { url: .img },
-              footer: { text:"Rust Drops Monitor" },
-              timestamp: now|todate
-          }) }
-        ')
+            COUNT=$(jq length <<<"${NEW:-[]}")
+            if [ "$COUNT" -eq 0 ]; then
+              echo "ℹ️ No hay nuevos drops en $PLATFORM"
+            else
+              EMBEDS=$(jq -c --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
+                { embeds: $drops | map({
+                    title: ("🎁 Nuevo Drop: " + .name),
+                    description: ("⏱ " + .time + " • Plataforma: " + $platform),
+                    color: $color,
+                    image: { url: .img },
+                    footer: { text:"Rust Drops Monitor" },
+                    timestamp: now|todate
+                }) }
+              ')
 
-        curl -s -X POST -H "Content-Type: application/json" -d "$EMBEDS" "$DISCORD_WEBHOOK"
-      fi
+              curl -s -X POST -H "Content-Type: application/json" -d "$EMBEDS" "$DISCORD_WEBHOOK"
+            fi
 
-      jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
-    }
+            jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
+          }
 
-    # Ejecutar para Twitch y Kick
-    send_platform twitch twitch.json 6570404
-    send_platform kick kick.json 3066993
-    
+          send_platform twitch twitch.json 6570404
+          send_platform kick kick.json 3066993
+
       - name: Commit state.json
         run: |
           git config user.name "github-actions"
