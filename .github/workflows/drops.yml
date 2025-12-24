@@ -16,11 +16,6 @@ jobs:
         with:
           node-version: 20
 
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}
-
       - name: Install Playwright
         run: |
           npm install playwright
@@ -37,7 +32,7 @@ jobs:
           LAST=$(jq -r '.lastRun // 0' state.json)
           NOW=$(date +%s)
           if [ $((NOW - LAST)) -lt 900 ]; then
-            echo "⏱️ Lock activo: aún no han pasado 15 minutos"
+            echo "⏱️ Lock activo"
             exit 0
           fi
 
@@ -47,7 +42,9 @@ jobs:
           const { chromium } = require('playwright');
           const fs = require('fs');
 
-          async function scrape(page, url, file) {
+          async function scrape(url, file) {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
             await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
             const drops = await page.$$eval('a.drop-box', boxes =>
@@ -57,37 +54,27 @@ jobs:
                   b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
                   null;
 
-                const streamerLinks = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
-                  .map(a => ({
-                    name: a.innerText.trim(),
-                    url: a.href
-                  }))
+                const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
+                  .map(a => ({ name: a.innerText.trim(), url: a.href }))
                   .filter(s => s.name && s.url);
 
                 return {
                   id: b.getAttribute('href') || img,
                   name: b.querySelector('.drop-type')?.innerText || 'Drop',
-                  time: b.querySelector('.drop-time span')?.innerText || 'Unknown',
+                  time: b.querySelector('.drop-time span')?.innerText || '',
                   img,
-                  streamers: streamerLinks
+                  streamers
                 };
               }).filter(d => d.id)
             );
 
             fs.writeFileSync(file, JSON.stringify(drops, null, 2));
+            await browser.close();
           }
 
           (async () => {
-            const browser = await chromium.launch();
-            const p1 = await browser.newPage();
-            const p2 = await browser.newPage();
-
-            await Promise.all([
-              scrape(p1, 'https://twitch.facepunch.com/', 'twitch.json'),
-              scrape(p2, 'https://kick.facepunch.com/', 'kick.json')
-            ]);
-
-            await browser.close();
+            await scrape('https://twitch.facepunch.com/', 'twitch.json');
+            await scrape('https://kick.facepunch.com/', 'kick.json');
           })();
           JS
 
@@ -120,9 +107,9 @@ jobs:
 
               i=1
               jq -c '.[]' <<<"$LIST" | while read DROP; do
-                NAME=$(jq -r '.name // "Drop"' <<<"$DROP" | xargs)
-                NAME=$(jq -n --arg n "$NAME" '
-                  $n |
+                RAW_NAME=$(jq -r '.name' <<<"$DROP")
+
+                NAME=$(jq -n --arg n "$RAW_NAME" '
                   if test("Pickaxe";"i") then "Pico"
                   elif test("Hatchet";"i") then "Hacha"
                   elif test("Ice Pickaxe";"i") then "Pico de hielo"
@@ -142,61 +129,31 @@ jobs:
                   elif test("M92 Pistol";"i") then "Pistola M92"
                   elif test("Pump Shotgun";"i") then "Escopeta de corredera"
                   elif test("Double Barrel Shotgun";"i") then "Escopeta de doble cañón"
-                  elif test("Handmade Shell";"i") then "Escopeta artesanal"
                   elif test("Rocket Launcher";"i") then "Lanzacohetes"
-                  elif test("Waterpipe Shotgun";"i") then "Escopeta de tubería"
-                  elif test("Grenade";"i") then "Granada"
-                  elif test("Beancan Grenade";"i") then "Granada Beancan"
-                  elif test("F1 Grenade";"i") then "Granada F1"
-                  elif test("Smoke Grenade";"i") then "Granada de humo"
                   elif test("Sheet Metal Door";"i") then "Puerta de chapa"
-                  elif test("Armored Door";"i") then "Puerta blindada"
                   elif test("Garage Door";"i") then "Puerta de garaje"
                   elif test("Large Wood Box";"i") then "Caja grande de madera"
                   elif test("Small Wood Box";"i") then "Caja pequeña de madera"
-                  elif test("Small Oil Refinery";"i") then "Pequeña refinería de petróleo"
-                  elif test("Large Oil Refinery";"i") then "Gran refinería de petróleo"
-                  elif test("Recycler";"i") then "Recicladora"
                   elif test("Furnace";"i") then "Horno"
                   elif test("Large Furnace";"i") then "Horno grande"
-                  elif test("Sleeping Bag";"i") then "Saco de dormir"
-                  elif test("Tool Cupboard";"i") then "Armario de herramientas"
-                  elif test("Roadsign Helmet";"i") then "Casco Roadsign"
-                  elif test("Coffee Can Helmet";"i") then "Casco lata de café"
-                  elif test("Metal Facemask";"i") then "Mascarilla metálica"
-                  elif test("Roadsign Jacket";"i") then "Chaqueta Roadsign"
-                  elif test("Roadsign Pants";"i") then "Pantalones Roadsign"
-                  elif test("Hoodie";"i") then "Sudadera"
-                  elif test("Pants";"i") then "Pantalones"
-                  elif test("Boots";"i") then "Botas"
-                  elif test("Gloves";"i") then "Guantes"
-                  elif test("Chest Plate";"i") then "Placa de pecho"
-                  elif test("Facemask";"i") then "Mascarilla"
-                  elif test("Bandana";"i") then "Bandana"
-                  elif test("Balaclava";"i") then "Pasamontañas"
-                  elif test("Beanie Hat";"i") then "Gorro"
-                  elif test("Hard Suit";"i") then "Traje duro"
-                  elif test("Hazmat Suit";"i") then "Traje hazmat"
-                  elif test("Wetsuit";"i") then "Traje de buceo"
-                  elif test("Backpack";"i") then "Mochila"
-                  elif test("Rock";"i") then "Roca"
-                  elif test("Roadsign Kilt";"i") then "Falda Roadsign"
-                  elif test("Cargo Pants";"i") then "Pantalones cargo"
-                  elif test("Jacket";"i") then "Chaqueta"
-                  elif test("Tactical Gloves";"i") then "Guantes tácticos"
                   else $n end
                 ' --raw-output)
 
-                TIME=$(jq -r '.time // "Desconocido"' <<<"$DROP" | tr -d '\n\r')
-                TIME=$(echo "$TIME" | perl -E 's/[[:space:]]*[Hh]ours?/ Horas/g; s/Unknown/Desconocido/')
+                TIME=$(jq -r '.time' <<<"$DROP" | tr -d '\n\r')
+
+                if [ -z "$(echo "$TIME" | tr -d '[:space:]')" ]; then
+                  TIME="Unknown"
+                fi
+
+                TIME=$(echo "$TIME" | perl -pe 's/\s*HOURS?/ Horas/i; s/Unknown/Desconocido/i')
 
                 IMG=$(jq -r '.img // ""' <<<"$DROP")
                 [ -z "$IMG" ] && IMG="https://rust.facepunch.com/default-drop.jpg"
 
                 if [ "$TYPE" = "Exclusivo" ]; then
-                  STREAMERS=$(jq -r '[.streamers[] | "[" + .name + "](" + .url + ")"] | join(", ")' <<<"$DROP")
+                  STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
                   TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
-                  DESC="$NAME ⏱ $TIME | Streamer: $STREAMERS"
+                  DESC="$NAME ⏱ $TIME | $STREAMERS"
                 else
                   TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
                   DESC="$NAME ⏱ $TIME"
