@@ -86,17 +86,18 @@ jobs:
             PREV="${PREV:-[]}"
             CURR="${CURR:-[]}"
 
+            # Detectar nuevos drops
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
             ')
-
             COUNT=$(jq length <<<"${NEW:-[]}")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
-              EMBEDS=$(jq -c --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
+              # Construir JSON válido
+              EMBEDS=$(jq -n --argjson drops "$NEW" --arg platform "$PLATFORM" --argjson color "$COLOR" '
                 { embeds: $drops | map({
                     title: ("🎁 Nuevo Drop: " + .name),
                     description: ("⏱ " + .time + " • Plataforma: " + $platform),
@@ -107,13 +108,15 @@ jobs:
                 }) }
               ')
 
-              # Debug JSON
+              # Debug: mostrar JSON
               echo "DEBUG: JSON a enviar a Discord:"
               echo "$EMBEDS" | jq .
 
+              # Enviar al webhook
               curl -s -X POST -H "Content-Type: application/json" --data-binary "$EMBEDS" "$DISCORD_WEBHOOK"
             fi
 
+            # Actualizar state.json
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
