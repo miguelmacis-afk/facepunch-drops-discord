@@ -5,14 +5,20 @@ on:
   schedule:
     - cron: "*/15 * * * *"
 
+concurrency:
+  group: rust-drops-monitor
+  cancel-in-progress: true
+
 jobs:
   drops:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -24,14 +30,8 @@ jobs:
       - name: Init state.json
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":[],"kick":[],"lastRun":0}' > state.json
+            echo '{"twitch":[],"kick":[]}' > state.json
           fi
-
-      - name: 15 min lock
-        run: |
-          LAST=$(jq -r '.lastRun // 0' state.json)
-          NOW=$(date +%s)
-          [ $((NOW - LAST)) -lt 900 ] && exit 0
 
       - name: Scrape Twitch & Kick
         run: |
@@ -42,20 +42,27 @@ jobs:
           async function scrape(url, file) {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-            await page.goto(url, { waitUntil: 'networkidle' });
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
             const drops = await page.$$eval('a.drop-box', boxes =>
-              boxes.map(b => ({
-                id: b.getAttribute('href') || null,
-                name: b.querySelector('.drop-type')?.innerText || '',
-                time: b.querySelector('.drop-time span')?.innerText || '',
-                img:
+              boxes.map(b => {
+                const img =
                   b.querySelector('video img')?.src ||
                   b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
-                  '',
-                streamers: [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
+                  '';
+
+                const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
                   .map(a => ({ name: a.innerText.trim(), url: a.href }))
-              })).filter(d => d.id)
+                  .filter(s => s.name && s.url);
+
+                return {
+                  id: b.getAttribute('href') || img,
+                  name: b.querySelector('.drop-type')?.innerText || '',
+                  time: b.querySelector('.drop-time span')?.innerText || '',
+                  img,
+                  streamers
+                };
+              }).filter(d => d.id)
             );
 
             fs.writeFileSync(file, JSON.stringify(drops, null, 2));
@@ -86,8 +93,12 @@ jobs:
             ')
             [ "$PREV" = "[]" ] && NEW="$CURR"
 
+            GENERAL=$(jq -c '[.[] | select(.streamers | length == 0)]' <<<"$NEW")
+            EXCLUSIVE=$(jq -c '[.[] | select(.streamers | length > 0)]' <<<"$NEW")
+
             send_list () {
-              LIST=$1
+              TYPE=$1
+              LIST=$2
               TOTAL=$(jq length <<<"$LIST")
               [ "$TOTAL" -eq 0 ] && return
               i=1
@@ -108,17 +119,30 @@ jobs:
                   else $n end
                 ' --raw-output)
 
-                TIME=$(jq -r '.time // ""' <<<"$DROP")
-                [ -z "$(echo "$TIME" | tr -d '[:space:]')" ] && TIME="Unknown"
+                TIME=$(jq -r '.time // ""' <<<"$DROP" | tr -d '\n\r')
+                if [ -z "$(echo "$TIME" | tr -d '[:space:]')" ]; then
+                  TIME="Unknown"
+                fi
                 TIME=$(echo "$TIME" | perl -pe 's/\s*HOURS?/ Horas/i; s/Unknown/Desconocido/i')
 
                 IMG=$(jq -r '.img // ""' <<<"$DROP")
                 [ -z "$IMG" ] && IMG="https://rust.facepunch.com/default-drop.jpg"
 
-                TITLE="🎁 Drop ${PLATFORM^} | $i/$TOTAL"
-                DESC="$NAME ⏱ $TIME"
+                if [ "$TYPE" = "Exclusivo" ]; then
+                  STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
+                  TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
+                  DESC="$NAME ⏱ $TIME | $STREAMERS"
+                else
+                  TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
+                  DESC="$NAME ⏱ $TIME"
+                fi
 
-                EMBED=$(jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --arg img "$IMG" --argjson c "$COLOR" \
+                EMBED=$(jq -n \
+                  --arg t "$TITLE" \
+                  --arg d "$DESC" \
+                  --arg u "$URL" \
+                  --arg img "$IMG" \
+                  --argjson c "$COLOR" \
                   '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
 
                 curl -s -X POST -H "Content-Type: application/json" \
@@ -128,18 +152,16 @@ jobs:
               done
             }
 
-            send_list "$NEW"
+            send_list "General" "$GENERAL"
+            send_list "Exclusivo" "$EXCLUSIVE"
+
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp && mv tmp state.json
           }
 
           send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/
           send_platform kick kick.json 2003190 https://kick.facepunch.com/
 
-      - name: Update lastRun
-        run: |
-          jq ".lastRun = $(date +%s)" state.json > tmp && mv tmp state.json
-
-      - name: Commit state
+      - name: Commit state.json
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
