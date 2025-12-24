@@ -123,6 +123,10 @@ jobs:
                 TIME=$(jq -r '.time' <<<"$DROP")
                 IMG=$(jq -r '.img' <<<"$DROP")
 
+                # --- Evitar null ---
+                NAME=${NAME:-"Drop"}
+                TIME=${TIME:-"Desconocido"}
+
                 # --- Traducciones ---
                 NAME=$(echo "$NAME" | jq -Rn '
                   if test("Pickaxe";"i") then "Pico"
