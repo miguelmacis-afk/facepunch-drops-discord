@@ -6,11 +6,6 @@
       "img": "https://files.facepunch.com/lewis/1b2811b1/rustmas_hatchet.jpg"
     },
     {
-      "name": "PICKAXE",
-      "time": "4 HOURS",
-      "img": "https://files.facepunch.com/lewis/1b2811b1/rustmas_pickaxe.jpg"
-    },
-    {
       "name": "FURNACE",
       "time": "6 HOURS",
       "img": "https://files.facepunch.com/lewis/1b2811b1/rustmas_furnace.jpg"
@@ -26,11 +21,6 @@
       "name": "LARGE WOOD BOX",
       "time": "2 HOURS",
       "img": "https://files.facepunch.com/lewis/1b2711b1/large-wood-box.jpg"
-    },
-    {
-      "name": "CROSSBOW",
-      "time": "4 HOURS",
-      "img": "https://files.facepunch.com/lewis/1b2711b1/crossbow.jpg"
     },
     {
       "name": "SHEET METAL DOOR",
