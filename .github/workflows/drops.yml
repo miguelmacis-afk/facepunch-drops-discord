@@ -149,8 +149,8 @@ jobs:
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp.json && mv tmp.json state.json
           }
 
-          send_platform twitch twitch.json 0x9146FF
-          send_platform kick kick.json 0x1ED760
+          send_platform twitch twitch.json 9502720
+          send_platform kick kick.json 2003190
 
       - name: Commit state.json
         run: |
