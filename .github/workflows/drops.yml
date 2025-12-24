@@ -1,130 +1,147 @@
-name: Facepunch Drops Bot
+name: Rust Drops Monitor
 
 on:
-  schedule:
-    - cron: "*/20 * * * *" # cada 20 minutos
   workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"   # cada 15 minutos
 
 jobs:
   drops:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: 📥 Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: 🟢 Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
-      - name: Install Playwright
+      - name: 🎭 Install Playwright
         run: |
           npm init -y
           npm install playwright
-          npx playwright install
+          npx playwright install chromium
 
-      - name: Scrape Twitch Drops
-        run: node scrape_twitch.js
-
-      - name: Scrape Kick Drops
-        run: node scrape_kick.js
-
-      - name: Detect activity
+      - name: 🧪 Crear state.json si no existe
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":false,"kick":false}' > state.json
+            echo '{"twitch":[],"kick":[]}' > state.json
           fi
 
-          if [ -s twitch_imgs.txt ]; then
-            TWITCH_ACTIVE=true
-          else
-            TWITCH_ACTIVE=false
-          fi
+      - name: 🌐 Crear scraper
+        run: |
+          cat <<'JS' > scrape.js
+          const { chromium } = require('playwright');
+          const fs = require('fs');
 
-          if [ -s kick_imgs.txt ]; then
-            KICK_ACTIVE=true
-          else
-            KICK_ACTIVE=false
-          fi
+          (async () => {
+            const url = process.argv[2];
+            const out = process.argv[3];
 
-          echo "TWITCH_ACTIVE=$TWITCH_ACTIVE" >> $GITHUB_ENV
-          echo "KICK_ACTIVE=$KICK_ACTIVE" >> $GITHUB_ENV
+            const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 
-      - name: Build embeds and send to Discord
+            await page.goto(url, { waitUntil: 'domcontentloaded' });
+            await page.waitForSelector('a.drop-box', { timeout: 20000 });
+
+            await page.evaluate(async () => {
+              for (let i = 0; i < 10; i++) {
+                window.scrollBy(0, window.innerHeight);
+                await new Promise(r => setTimeout(r, 600));
+              }
+            });
+
+            const drops = await page.evaluate(() =>
+              [...document.querySelectorAll('a.drop-box')].map(box => ({
+                id: box.querySelector('.drop-counter')?.dataset.itemid,
+                name: box.querySelector('.drop-type')?.innerText ?? 'Drop',
+                time: box.querySelector('.drop-time span')?.innerText ?? 'Unknown',
+                img:
+                  box.querySelector('video img')?.src ||
+                  box.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
+                  null
+              })).filter(d => d.id)
+            );
+
+            fs.writeFileSync(out, JSON.stringify(drops, null, 2));
+            await browser.close();
+          })();
+          JS
+
+      - name: 🔍 Scrape Twitch y Kick
+        run: |
+          node scrape.js https://twitch.facepunch.com/ twitch.json
+          node scrape.js https://kick.facepunch.com/ kick.json
+
+      - name: 🔔 Detectar drops nuevos + enviar Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
           build_embed() {
-            TITLE=$1
-            URL=$2
-            COLOR=$3
-            FILE=$4
-
-            if [ ! -s "$FILE" ]; then
-              echo ""
-              return
-            fi
-
-            TOTAL=$(wc -l < "$FILE")
-            DESC="Total de drops: $TOTAL\n"
-
-            COUNT=0
-            while read -r img; do
-              DESC="$DESC🖼 $img\n"
-              COUNT=$((COUNT+1))
-              [ $COUNT -ge 8 ] && break
-            done < "$FILE"
-
-            THUMBNAIL=$(head -n 1 "$FILE")
-
-            jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" --argjson c $COLOR --arg thumb "$THUMBNAIL" '
+            jq -n \
+              --arg name "$1" \
+              --arg time "$2" \
+              --arg img "$3" \
+              --arg url "$4" \
+              --argjson color "$5" '
               {
-                "title": $t,
-                "description": $d,
-                "url": $u,
-                "color": $c,
-                "thumbnail": {"url": $thumb}
+                title: "🎁 Nuevo Drop Disponible",
+                description: "**" + $name + "**\n⏱ " + $time,
+                url: $url,
+                color: $color,
+                image: ($img | select(length > 0) | {url: .}),
+                footer: { text: "Rust Drops Monitor • Facepunch" },
+                timestamp: now | todate
               }'
           }
 
-          PREV_TWITCH=$(jq -r '.twitch|tostring' state.json)
-          PREV_KICK=$(jq -r '.kick|tostring' state.json)
+          send_platform() {
+            PLATFORM=$1
+            FILE=$2
+            URL=$3
+            COLOR=$4
 
-          TW_EMBED=null
-          KI_EMBED=null
+            PREV=$(jq -r ".${PLATFORM}[]" state.json)
+            CURR=$(jq -r '.[].id' "$FILE")
 
-          if [ -s twitch_imgs.txt ] && [ "$PREV_TWITCH" = "false" ]; then
-            TW_EMBED=$(build_embed "🎮 Twitch Drops ACTIVOS" "https://twitch.facepunch.com/" 5763719 twitch_imgs.txt)
-          fi
+            NEW_IDS=$(comm -13 <(echo "$PREV" | sort) <(echo "$CURR" | sort))
 
-          if [ -s kick_imgs.txt ] && [ "$PREV_KICK" = "false" ]; then
-            KI_EMBED=$(build_embed "🟢 Kick Drops ACTIVOS" "https://kick.facepunch.com/" 3066993 kick_imgs.txt)
-          fi
+            [ -z "$NEW_IDS" ] && return
 
-          [ -z "$TW_EMBED" ] && TW_EMBED=null
-          [ -z "$KI_EMBED" ] && KI_EMBED=null
+            EMBEDS=()
 
-          jq -n --argjson t "$TW_EMBED" --argjson k "$KI_EMBED" '
-            [ $t, $k ] | map(select(. != null))
-          ' > embeds.json
+            for ID in $NEW_IDS; do
+              DROP=$(jq ".[] | select(.id==\"$ID\")" "$FILE")
+              EMBEDS+=("$(build_embed \
+                "$(jq -r .name <<<"$DROP")" \
+                "$(jq -r .time <<<"$DROP")" \
+                "$(jq -r .img <<<"$DROP")" \
+                "$URL" \
+                "$COLOR"
+              )")
+            done
 
-          if [ "$(jq length embeds.json)" -gt 0 ]; then
-            curl -X POST \
-              -H "Content-Type: application/json" \
-              -d "{\"embeds\":$(cat embeds.json)}" \
-              ${{ secrets.DISCORD_WEBHOOK }}
-          fi
+            jq -n --argjson e "$(printf '%s\n' "${EMBEDS[@]}" | jq -s '.')" \
+              '{embeds:$e}' | \
+              curl -s -X POST \
+                -H "Content-Type: application/json" \
+                -d @- \
+                "$DISCORD_WEBHOOK"
 
-      - name: Update state
+            jq --arg p "$PLATFORM" \
+               --argjson ids "$(jq '[.[].id]' "$FILE")" \
+               '.[$p]=$ids' state.json > tmp.json && mv tmp.json state.json
+          }
+
+          send_platform twitch twitch.json https://twitch.facepunch.com/ 6570406
+          send_platform kick   kick.json   https://kick.facepunch.com/   3066993
+
+      - name: 💾 Guardar estado
         run: |
-          jq -n \
-            --argjson t $TWITCH_ACTIVE \
-            --argjson k $KICK_ACTIVE \
-            '{twitch:$t,kick:$k}' > state.json
-
-      - name: Commit state
-        run: |
-          git config user.name "drops-bot"
-          git config user.email "bot@github"
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
           git add state.json
-          git commit -m "Update drops state" || echo "No changes"
+          git commit -m "update drop state" || echo "Sin cambios"
           git push
