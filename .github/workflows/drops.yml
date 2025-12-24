@@ -90,14 +90,15 @@ jobs:
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.img as $i | $prev | map(.img) | index($i) | not)]
             ')
+
             COUNT=$(jq length <<<"${NEW:-[]}")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-            # Envío inicial si state.json vacío
-            if [ "${PREV}" = "[]" ]; then
+            # Envío inicial: si no hay drops previos, enviar todos
+            if [ "$(jq length <<<"$PREV")" -eq 0 ]; then
               echo "⚡ Envío inicial de todos los drops de $PLATFORM"
               NEW="$CURR"
-              COUNT=$(jq length <<<"${NEW:-[]}")
+              COUNT=$(jq length <<<"$NEW")
             fi
 
             if [ "$COUNT" -eq 0 ]; then
