@@ -194,11 +194,11 @@ jobs:
                 if [ -z "$STREAMERS" ]; then
                   TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
                   URL_DROP=$(jq -r '.id' <<<"$DROP")
-                  DESC="🎉 $NAME \r⏱ $TIME"
+                  DESC=$'🎉 '"$NAME"'\n⏱ '"$TIME"
                 else
                   TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
                   URL_DROP=$(jq -r '.streamers[0].url' <<<"$DROP")
-                  DESC="🎉 $NAME \r⏱ $TIME \r🎮 $STREAMERS"
+                  DESC=$'🎉 '"$NAME"'\n⏱ '"$TIME"'\n🎮 '"$STREAMERS"
                 fi
 
                 EMBED=$(jq -n \
