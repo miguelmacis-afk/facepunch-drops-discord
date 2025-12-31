@@ -30,7 +30,7 @@ jobs:
       - name: Init state.json
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":[],"kick":[],"emptyCount":{"twitch":0,"kick":0}}' > state.json
+            echo '{"twitch":{"drops":[],"fail":0},"kick":{"drops":[],"fail":0}}' > state.json
           fi
 
       - name: Scrape Twitch & Kick
@@ -44,10 +44,8 @@ jobs:
             const page = await browser.newPage();
             await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-            // Obtener imagen del evento
-            const heroImg = await page.$eval('.hero-image img', el => el.src);
+            const eventImg = await page.$eval('.hero-image img', img => img.src).catch(() => '');
 
-            // Obtener drops
             const drops = await page.$$eval('a.drop-box', boxes =>
               boxes.map(b => {
                 const img =
@@ -69,7 +67,7 @@ jobs:
               }).filter(d => d.id)
             );
 
-            fs.writeFileSync(file, JSON.stringify({eventImg: heroImg, drops}, null, 2));
+            fs.writeFileSync(file, JSON.stringify({eventImg,drops}, null, 2));
             await browser.close();
           }
 
@@ -90,45 +88,37 @@ jobs:
             URL=$4
 
             DATA=$(cat "$FILE")
-            EVENT_IMG=$(jq -r '.eventImg' <<<"$DATA")
+            EVENT_IMG=$(jq -r '.eventImg // ""' <<<"$DATA")
             CURR=$(jq -c '.drops' <<<"$DATA")
-            PREV=$(jq -c ".${PLATFORM} // []" state.json)
-            PREV="${PREV:-[]}"
+            PREV=$(jq -c ".${PLATFORM}.drops // []" state.json)
 
-            # Detectar nuevos drops
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
             ')
-
             COUNT=$(jq length <<<"$NEW")
             echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-            # Reset automático si no hay drops 3 veces
             if [ "$COUNT" -eq 0 ]; then
-              EMPTY_COUNT=$(jq -r ".emptyCount.${PLATFORM}" state.json)
-              EMPTY_COUNT=$((EMPTY_COUNT+1))
-              echo "ℹ️ No hay drops en $PLATFORM | Contador: $EMPTY_COUNT"
-              jq --argjson ec "$EMPTY_COUNT" ".emptyCount.${PLATFORM} = \$ec" state.json > tmp && mv tmp state.json
-              if [ "$EMPTY_COUNT" -ge 3 ]; then
-                echo "⚡ RESET ${PLATFORM^^} CAMPAIGN"
-                jq ".${PLATFORM}=[] | .emptyCount.${PLATFORM}=0" state.json > tmp && mv tmp state.json
+              FAIL=$(jq -r ".${PLATFORM}.fail" state.json)
+              FAIL=$((FAIL+1))
+              echo "ℹ️ No hay nuevos drops en $PLATFORM (Intento $FAIL/3)"
+              jq --argjson f "$FAIL" ".${PLATFORM}.fail = \$f" state.json > tmp && mv tmp state.json
+              if [ "$FAIL" -ge 3 ]; then
+                echo "⚠️ RESET $PLATFORM CAMPAIGN"
+                jq ".${PLATFORM} = {drops:[],fail:0}" state.json > tmp && mv tmp state.json
               fi
-            else
-              # Reset contador
-              jq ".emptyCount.${PLATFORM}=0" state.json > tmp && mv tmp state.json
+              return
             fi
 
-            # Enviar embed del evento primero
+            jq --argjson f 0 ".${PLATFORM}.fail = \$f" state.json > tmp && mv tmp state.json
+            TOTAL=$(jq length <<<"$CURR")
+            echo "DEBUG: Total drops $PLATFORM: $TOTAL"
+
             if [ -n "$EVENT_IMG" ]; then
-              EVENT_EMBED=$(jq -n --arg t "Nuevos Drops ${PLATFORM^}" \
-                --arg u "$URL" --arg img "$EVENT_IMG" --argjson c "$COLOR" \
-                '{title:$t,url:$u,color:$c,image:{url:$img}}')
-
-              curl -s -X POST -H "Content-Type: application/json" \
-                --data "{\"embeds\":[$EVENT_EMBED]}" "$DISCORD_WEBHOOK"
+              EMBED=$(jq -n --arg t "Drops ${PLATFORM^}" --arg u "$URL" --arg img "$EVENT_IMG" --argjson c "$COLOR" '{title:$t,url:$u,color:$c,image:{url:$img}}')
+              curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
             fi
 
-            # Traducir drops
             translate() {
               n="$1"
               case "$n" in
@@ -197,39 +187,36 @@ jobs:
               esac
             }
 
-            # Enviar drops
+            i=1
             jq -c '.[]' <<<"$NEW" | while read DROP; do
-              NAME=$(translate "$(jq -r '.name' <<<"$DROP")")
-              TIME=$(jq -r '.time' <<<"$DROP" | tr -d '\n\r' | sed 's/HOURS?/Horas/i;s/Unknown/Desconocido/i')
+              NAME=$(jq -r '.name // ""' <<<"$DROP" | xargs)
+              NAME=$(translate "$NAME")
+              TIME=$(jq -r '.time // ""' <<<"$DROP" | sed 's/HOURS/ Horas/i')
               IMG=$(jq -r '.img // ""' <<<"$DROP")
-              [ -z "$IMG" ] && IMG="$EVENT_IMG"
-
               STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
-              TITLE="🎁 $NAME"
-              DESC="$NAME ⏱ $TIME"
-              if [ -n "$STREAMERS" ] && [ "$STREAMERS" != "[]" ]; then
+              TOTAL=$(jq length <<<"$CURR")
+
+              if [ "$(jq length <<<"$STREAMERS")" -gt 0 ]; then
+                TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
                 DESC="$NAME ⏱ $TIME | $STREAMERS"
+                URL_DROP=$(jq -r '.streamers[0].url' <<<"$DROP")
+              else
+                TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
+                DESC="$NAME ⏱ $TIME"
+                URL_DROP="$URL"
               fi
 
-              EMBED=$(jq -n \
-                --arg t "$TITLE" \
-                --arg d "$DESC" \
-                --arg u "$URL" \
-                --arg img "$IMG" \
-                --argjson c "$COLOR" \
-                '{title:$t,url:$u,description:$d,color:$c,image:{url:$img}}')
-
-              curl -s -X POST -H "Content-Type: application/json" \
-                --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
+              EMBED=$(jq -n --arg t "$TITLE" --arg d "$DESC" --arg u "$URL_DROP" --arg img "$IMG" --argjson c "$COLOR" '{title:$t,url:$u,description:$d,color:$c,image:{url:$img}}')
+              curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
+              i=$((i+1))
             done
 
-            # Actualizar state.json
-            jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp && mv tmp state.json
+            jq --argjson ids "$CURR" ".${PLATFORM}.drops = \$ids" state.json > tmp && mv tmp state.json
           }
 
-          send_platform twitch twitch.json 9502720 https://www.twitch.tv/directory/category/rust
+          send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/
           send_platform kick kick.json 2003190 https://kick.facepunch.com/
-          
+
       - name: Commit state.json
         run: |
           git config user.name "github-actions"
@@ -237,4 +224,4 @@ jobs:
           git diff --quiet && exit 0
           git add state.json
           git commit -m "Update drops"
-          git push || echo "Nothing to push"
+          git push
