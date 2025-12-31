@@ -30,7 +30,7 @@ jobs:
       - name: Init state.json
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":{"drops":[],"empty_count":0},"kick":{"drops":[],"empty_count":0}}' > state.json
+            echo '{"twitch":[],"kick":[],"no_drops":{"twitch":0,"kick":0}}' > state.json
           fi
 
       - name: Scrape Twitch & Kick
@@ -39,7 +39,7 @@ jobs:
           const { chromium } = require('playwright');
           const fs = require('fs');
 
-          async function scrape(url, file) {
+          async function scrape(url, dropsFile, eventFile) {
             const browser = await chromium.launch();
             const page = await browser.newPage();
             await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
@@ -65,13 +65,17 @@ jobs:
               }).filter(d => d.id)
             );
 
-            fs.writeFileSync(file, JSON.stringify(drops, null, 2));
+            fs.writeFileSync(dropsFile, JSON.stringify(drops, null, 2));
+
+            const event_img = drops.length > 0 ? drops[0].img : '';
+            fs.writeFileSync(eventFile, JSON.stringify({ event_img }, null, 2));
+
             await browser.close();
           }
 
           (async () => {
-            await scrape('https://twitch.facepunch.com/', 'twitch.json');
-            await scrape('https://kick.facepunch.com/', 'kick.json');
+            await scrape('https://twitch.facepunch.com/', 'twitch.json', 'twitch_event.json');
+            await scrape('https://kick.facepunch.com/', 'kick.json', 'kick_event.json');
           })();
           JS
 
@@ -84,63 +88,116 @@ jobs:
             FILE=$2
             COLOR=$3
             URL=$4
-            EVENT_IMG=$5
+            EVENT_FILE=$5
 
-            PREV=$(jq -c ".${PLATFORM}.drops // []" state.json)
-            EMPTY_COUNT=$(jq -r ".${PLATFORM}.empty_count // 0" state.json)
+            PREV=$(jq -c ".${PLATFORM} // []" state.json)
             CURR=$(jq -c '.' "$FILE")
 
+            # Detectar nuevos drops
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
             ')
-
             [ "$PREV" = "[]" ] && NEW="$CURR"
 
             COUNT=$(jq length <<<"$NEW")
+            echo "DEBUG: Nuevos drops $PLATFORM: $COUNT"
 
-            # Reset automático tras 3 intentos vacíos
-            if [ "$COUNT" -eq 0 ]; then
-              EMPTY_COUNT=$((EMPTY_COUNT+1))
-              if [ "$EMPTY_COUNT" -ge 3 ]; then
-                echo "⚠️ RESET ${PLATFORM^} CAMPAIGN - No drops en 3 intentos"
-                jq ".${PLATFORM}.drops=[] | .${PLATFORM}.empty_count=0" state.json > tmp && mv tmp state.json
-                return
-              else
-                jq ".${PLATFORM}.empty_count=$EMPTY_COUNT" state.json > tmp && mv tmp state.json
-                echo "ℹ️ No hay nuevos drops en $PLATFORM (Intento $EMPTY_COUNT/3)"
-                return
-              fi
-            else
-              EMPTY_COUNT=0
+            # Leer imagen del evento
+            EVENT_IMG=$(jq -r '.event_img // ""' "$EVENT_FILE")
+            if [ -n "$EVENT_IMG" ]; then
+              echo "⚡ Envío del embed del evento $PLATFORM"
+              EVENT_EMBED=$(jq -n \
+                --arg t "🎉 Evento Rust $PLATFORM" \
+                --arg u "$URL" \
+                --arg img "$EVENT_IMG" \
+                --argjson c "$COLOR" \
+                '{title:$t,url:$u,color:$c,thumbnail:{url:$img}}')
+              curl -s -X POST -H "Content-Type: application/json" \
+                --data "{\"embeds\":[$EVENT_EMBED]}" "$DISCORD_WEBHOOK"
             fi
 
-            echo "✅ Nuevos drops $PLATFORM: $COUNT"
+            if [ "$COUNT" -eq 0 ]; then
+              echo "ℹ️ No hay nuevos drops en $PLATFORM"
+              # Incrementar contador no_drops
+              jq --arg p "$PLATFORM" '.no_drops[$p] += 1' state.json > tmp && mv tmp state.json
+              NO_DROPS=$(jq -r ".no_drops.$PLATFORM" state.json)
+              if [ "$NO_DROPS" -ge 3 ]; then
+                echo "🔄 RESET $PLATFORM CAMPAIGN por 3 intentos sin drops"
+                jq --arg p "$PLATFORM" '.[$p] = [] | .no_drops[$p]=0' state.json > tmp && mv tmp state.json
+              fi
+              return
+            else
+              # Reiniciar contador no_drops
+              jq --arg p "$PLATFORM" '.no_drops[$p]=0' state.json > tmp && mv tmp state.json
+            fi
 
-            # 1️⃣ Embed del evento
-            EVENT_EMBED=$(jq -n \
-              --arg t "🎉 Nuevos Drops ${PLATFORM^}" \
-              --arg u "$URL" \
-              --arg img "$EVENT_IMG" \
-              --argjson c "$COLOR" \
-              '{title:$t,url:$u,color:$c,image:{url:$img}}'
-            )
-
-            curl -s -X POST -H "Content-Type: application/json" \
-              --data "{\"embeds\":[$EVENT_EMBED]}" "$DISCORD_WEBHOOK"
-
-            # 2️⃣ Drops individuales
+            # Enviar cada drop con traducción
             jq -c '.[]' <<<"$NEW" | while read DROP; do
               RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
+
               NAME=$(jq -n --arg n "$RAW_NAME" '
                 ($n // "") |
                 if test("Pickaxe";"i") then "Pico"
                 elif test("Hatchet";"i") then "Hacha"
+                elif test("Ice Pickaxe";"i") then "Pico de hielo"
+                elif test("Salvaged Icepick";"i") then "Icepick recuperado"
                 elif test("Jackhammer";"i") then "Martillo neumático"
+                elif test("Hammer";"i") then "Martillo"
                 elif test("Crossbow";"i") then "Ballesta"
+                elif test("Bow";"i") then "Arco"
+                elif test("Assault Rifle";"i") then "Rifle de asalto"
+                elif test("Bolt Action Rifle";"i") then "Rifle de cerrojo"
                 elif test("Semi-Automatic Rifle";"i") then "Rifle semiautomático"
-                elif test("Large Wood Box";"i") then "Caja grande de madera"
+                elif test("Custom SMG";"i") then "SMG personalizada"
+                elif test("MP5";"i") then "MP5"
+                elif test("Thompson";"i") then "Thompson"
+                elif test("M249";"i") then "M249"
+                elif test("Revolver";"i") then "Revólver"
+                elif test("M92 Pistol";"i") then "Pistola M92"
+                elif test("Pump Shotgun";"i") then "Escopeta de corredera"
+                elif test("Double Barrel Shotgun";"i") then "Escopeta de doble cañón"
+                elif test("Handmade Shell";"i") then "Escopeta artesanal"
+                elif test("Rocket Launcher";"i") then "Lanzacohetes"
+                elif test("Waterpipe Shotgun";"i") then "Escopeta de tubería"
+                elif test("Grenade";"i") then "Granada"
+                elif test("Beancan Grenade";"i") then "Granada Beancan"
+                elif test("F1 Grenade";"i") then "Granada F1"
+                elif test("Smoke Grenade";"i") then "Granada de humo"
                 elif test("Sheet Metal Door";"i") then "Puerta de chapa"
+                elif test("Armored Door";"i") then "Puerta blindada"
+                elif test("Garage Door";"i") then "Puerta de garaje"
+                elif test("Large Wood Box";"i") then "Caja de madera grande"
+                elif test("Small Wood Box";"i") then "Caja de madera pequeña"
+                elif test("Small Oil Refinery";"i") then "Pequeña refinería de petróleo"
+                elif test("Large Oil Refinery";"i") then "Gran refinería de petróleo"
+                elif test("Recycler";"i") then "Recicladora"
                 elif test("Furnace";"i") then "Horno"
+                elif test("Large Furnace";"i") then "Horno grande"
+                elif test("Sleeping Bag";"i") then "Saco de dormir"
+                elif test("Tool Cupboard";"i") then "Armario de herramientas"
+                elif test("Roadsign Helmet";"i") then "Casco Roadsign"
+                elif test("Coffee Can Helmet";"i") then "Casco lata de café"
+                elif test("Metal Facemask";"i") then "Mascarilla metálica"
+                elif test("Roadsign Jacket";"i") then "Chaqueta Roadsign"
+                elif test("Roadsign Pants";"i") then "Pantalones Roadsign"
+                elif test("Hoodie";"i") then "Sudadera"
+                elif test("Pants";"i") then "Pantalones"
+                elif test("Boots";"i") then "Botas"
+                elif test("Gloves";"i") then "Guantes"
+                elif test("Chest Plate";"i") then "Placa de pecho"
+                elif test("Facemask";"i") then "Mascarilla"
+                elif test("Bandana";"i") then "Bandana"
+                elif test("Balaclava";"i") then "Pasamontañas"
+                elif test("Beanie Hat";"i") then "Gorro"
+                elif test("Hard Suit";"i") then "Traje duro"
+                elif test("Hazmat Suit";"i") then "Traje hazmat"
+                elif test("Wetsuit";"i") then "Traje de buceo"
+                elif test("Backpack";"i") then "Mochila"
+                elif test("Rock";"i") then "Roca"
+                elif test("Roadsign Kilt";"i") then "Falda Roadsign"
+                elif test("Cargo Pants";"i") then "Pantalones cargo"
+                elif test("Jacket";"i") then "Chaqueta"
+                elif test("Tactical Gloves";"i") then "Guantes tácticos"
                 else $n end
               ' --raw-output)
 
@@ -151,24 +208,23 @@ jobs:
               [ -z "$IMG" ] && IMG="$EVENT_IMG"
 
               EMBED=$(jq -n \
-                --arg t "🎁 $NAME" \
+                --arg t "$NAME" \
                 --arg d "⏱ $TIME" \
                 --arg u "$URL" \
                 --arg img "$IMG" \
                 --argjson c "$COLOR" \
-                '{title:$t,description:$d,url:$u,color:$c,thumbnail:{url:$img}}'
-              )
+                '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
 
               curl -s -X POST -H "Content-Type: application/json" \
                 --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
             done
 
             # Actualizar state.json
-            jq --argjson ids "$CURR" ".${PLATFORM}.drops = \$ids | .${PLATFORM}.empty_count=$EMPTY_COUNT" state.json > tmp && mv tmp state.json
+            jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp && mv tmp state.json
           }
 
-          send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/ https://files.facepunch.com/lewis/1b2811b1/marque-inside.svg
-          send_platform kick   kick.json   2003190 https://kick.facepunch.com/   https://files.facepunch.com/lewis/1b2711b1/dok-logo-rustmas.png
+          send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/ twitch_event.json
+          send_platform kick kick.json 2003190 https://kick.facepunch.com/ kick_event.json
 
       - name: Commit state.json
         run: |
