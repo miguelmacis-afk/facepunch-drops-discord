@@ -190,7 +190,7 @@ jobs:
                 IMG=$(jq -r '.img // ""' <<<"$DROP")
                 [ -z "$IMG" ] && IMG="$EVENT_IMG"
 
-                STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join("\r🎮")' <<<"$DROP")
+                STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join("\n🎮")' <<<"$DROP")
                 if [ -z "$STREAMERS" ]; then
                   TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
                   URL_DROP=$(jq -r '.id' <<<"$DROP")
