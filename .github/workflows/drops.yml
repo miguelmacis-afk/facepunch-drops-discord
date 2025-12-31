@@ -104,16 +104,15 @@ jobs:
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
               # Embed del evento
-              TOTAL=$(jq length <<<"$NEW")
               EVENT_EMBED=$(jq -n \
-                --arg t "Drops ${PLATFORM^} $TOTAL" \
+                --arg t "Drops ${PLATFORM^}" \
                 --arg u "$URL" \
                 --arg img "$EVENT_IMG" \
                 --argjson c "$COLOR" \
                 '{title:$t,url:$u,color:$c,image:{url:$img}}')
               curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EVENT_EMBED]}" "$DISCORD_WEBHOOK"
 
-              
+              TOTAL=$(jq length <<<"$NEW")
               i=1
               jq -c '.[]' <<<"$NEW" | while read DROP; do
                 RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
