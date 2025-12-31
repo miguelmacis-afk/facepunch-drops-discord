@@ -100,6 +100,7 @@ jobs:
             [ "$PREV" = "[]" ] && NEW="$CURR"
 
             COUNT=$(jq length <<<"$NEW")
+            COUNT=${COUNT:-0} 
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
