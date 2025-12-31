@@ -104,6 +104,11 @@ jobs:
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
+               if [ "${PLATFORM^}" = "Kick" ]; then
+                URL="https://kick.facepunch.com/"
+                    else
+                URL="https://twitch.facepunch.com/"
+            fi
               # Embed del evento
               EVENT_EMBED=$(jq -n \
                 --arg t "Drops ${PLATFORM^}" \
