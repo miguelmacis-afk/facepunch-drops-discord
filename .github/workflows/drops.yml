@@ -44,6 +44,7 @@ jobs:
             const page = await browser.newPage();
             await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
+            // Obtener todos los drops
             const drops = await page.$$eval('a.drop-box', boxes =>
               boxes.map(b => {
                 const img =
@@ -51,23 +52,23 @@ jobs:
                   b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
                   '';
 
-                const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
-                  .map(a => ({ name: a.innerText.trim(), url: a.href }))
-                  .filter(s => s.name && s.url);
-
                 return {
                   id: b.getAttribute('href') || img,
                   name: b.querySelector('.drop-type')?.innerText || '',
                   time: b.querySelector('.drop-time span')?.innerText || '',
-                  img,
-                  streamers
+                  img
                 };
               }).filter(d => d.id)
             );
 
             fs.writeFileSync(dropsFile, JSON.stringify(drops, null, 2));
 
-            const event_img = drops.length > 0 ? drops[0].img : '';
+            // Obtener imagen del evento (la primera imagen significativa de la página)
+            const event_img = await page.$$eval('img', imgs => {
+              const filtered = imgs.map(i => i.src)
+                .filter(src => !/logo|icon|avatar|favicon|banner/i.test(src));
+              return filtered.length > 0 ? filtered[0] : '';
+            });
             fs.writeFileSync(eventFile, JSON.stringify({ event_img }, null, 2));
 
             await browser.close();
@@ -131,7 +132,7 @@ jobs:
               jq --arg p "$PLATFORM" '.no_drops[$p]=0' state.json > tmp && mv tmp state.json
             fi
 
-            # Enviar cada drop con traducción
+            # Enviar cada drop traducido
             jq -c '.[]' <<<"$NEW" | while read DROP; do
               RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
 
@@ -219,7 +220,6 @@ jobs:
                 --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
             done
 
-            # Actualizar state.json
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp && mv tmp state.json
           }
 
