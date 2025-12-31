@@ -30,7 +30,11 @@ jobs:
       - name: Init state.json
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":[],"kick":[]}' > state.json
+            echo '{
+              "twitch": [],
+              "kick": [],
+              "empty": { "twitch": 0, "kick": 0 }
+            }' > state.json
           fi
 
       - name: Scrape Twitch & Kick
@@ -43,6 +47,11 @@ jobs:
             const browser = await chromium.launch();
             const page = await browser.newPage();
             await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+
+            const eventImage = await page.$eval(
+              'meta[property="og:image"]',
+              el => el.content
+            ).catch(() => null);
 
             const drops = await page.$$eval('a.drop-box', boxes =>
               boxes.map(b => {
@@ -62,10 +71,10 @@ jobs:
                   img,
                   streamers
                 };
-              }).filter(d => d.id)
+              }).filter(d => d.id && d.img)
             );
 
-            fs.writeFileSync(file, JSON.stringify(drops, null, 2));
+            fs.writeFileSync(file, JSON.stringify({ eventImage, drops }, null, 2));
             await browser.close();
           }
 
@@ -86,80 +95,76 @@ jobs:
             URL=$4
 
             PREV=$(jq -c ".${PLATFORM} // []" state.json)
-            CURR=$(jq -c '.' "$FILE")
+            EMPTY=$(jq -r ".empty.${PLATFORM}" state.json)
+
+            EVENT_IMG=$(jq -r '.eventImage // empty' "$FILE")
+            CURR=$(jq -c '.drops // []' "$FILE")
+
+            COUNT_CURR=$(jq length <<<"$CURR")
+
+            if [ "$COUNT_CURR" -eq 0 ]; then
+              EMPTY=$((EMPTY+1))
+              echo "⚠️ $PLATFORM sin drops ($EMPTY/2)"
+            else
+              EMPTY=0
+            fi
+
+            jq ".empty.${PLATFORM} = $EMPTY" state.json > tmp && mv tmp state.json
+
+            if [ "$EMPTY" -ge 2 ]; then
+              echo "♻️ Reseteando estado de $PLATFORM"
+              jq ".${PLATFORM} = [] | .empty.${PLATFORM} = 0" state.json > tmp && mv tmp state.json
+              PREV="[]"
+            fi
 
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
             ')
             [ "$PREV" = "[]" ] && NEW="$CURR"
 
-            GENERAL=$(jq -c '[.[] | select(.streamers | length == 0)]' <<<"$NEW")
-            EXCLUSIVE=$(jq -c '[.[] | select(.streamers | length > 0)]' <<<"$NEW")
+            TOTAL=$(jq length <<<"$NEW")
+            [ "$TOTAL" -eq 0 ] && return
 
-            send_list () {
-              TYPE=$1
-              LIST=$2
-              TOTAL=$(jq length <<<"$LIST")
-              [ "$TOTAL" -eq 0 ] && return
-              i=1
+            LIST=$(jq -r '.[] |
+              "- **" + (
+                .name
+                | if test("Large Wood Box";"i") then "Caja grande de madera"
+                elif test("Crossbow";"i") then "Ballesta"
+                elif test("Sheet Metal Door";"i") then "Puerta de chapa"
+                elif test("Jackhammer";"i") then "Martillo neumático"
+                elif test("Furnace";"i") then "Horno"
+                else . end
+              ) + "** ⏱ " +
+              (.time
+                | gsub("HOURS?";"horas")
+                | gsub("Unknown";"Desconocido")
+              )
+            ' <<<"$NEW")
 
-              jq -c '.[]' <<<"$LIST" | while read DROP; do
-                RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
+            EMBED=$(jq -n \
+              --arg t "🎁 Nuevos Drops ${PLATFORM^} | Total: $TOTAL" \
+              --arg d "$LIST" \
+              --arg u "$URL" \
+              --arg img "$EVENT_IMG" \
+              --argjson c "$COLOR" \
+              '{
+                title:$t,
+                url:$u,
+                description:$d,
+                color:$c,
+                image:{url:$img},
+                footer:{text:"Rust Drops Monitor"},
+                timestamp:(now|todate)
+              }')
 
-                NAME=$(jq -n --arg n "$RAW_NAME" '
-                  ($n // "") |
-                  if test("Pickaxe";"i") then "Pico"
-                  elif test("Hatchet";"i") then "Hacha"
-                  elif test("Jackhammer";"i") then "Martillo neumático"
-                  elif test("Crossbow";"i") then "Ballesta"
-                  elif test("Semi-Automatic Rifle";"i") then "Rifle semiautomático"
-                  elif test("Large Wood Box";"i") then "Caja grande de madera"
-                  elif test("Sheet Metal Door";"i") then "Puerta de chapa"
-                  elif test("Furnace";"i") then "Horno"
-                  else $n end
-                ' --raw-output)
-
-                TIME=$(jq -r '.time // ""' <<<"$DROP" | tr -d '\n\r')
-                if [ -z "$(echo "$TIME" | tr -d '[:space:]')" ]; then
-                  TIME="Unknown"
-                fi
-                TIME=$(echo "$TIME" | perl -pe 's/\s*HOURS?/ Horas/i; s/Unknown/Desconocido/i')
-
-                IMG=$(jq -r '.img // ""' <<<"$DROP")
-                [ -z "$IMG" ] && IMG="https://rust.facepunch.com/default-drop.jpg"
-
-                if [ "$TYPE" = "Exclusivo" ]; then
-                  STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
-                  TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
-                  DESC="$NAME ⏱ $TIME | $STREAMERS"
-                else
-                  TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
-                  DESC="$NAME ⏱ $TIME"
-                fi
-
-                EMBED=$(jq -n \
-                  --arg t "$TITLE" \
-                  --arg d "$DESC" \
-                  --arg u "$URL" \
-                  --arg img "$IMG" \
-                  --argjson c "$COLOR" \
-                  '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
-
-                curl -s -X POST -H "Content-Type: application/json" \
-                  --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
-
-                i=$((i+1))
-              done
-            }
-
-            send_list "General" "$GENERAL"
-            send_list "Exclusivo" "$EXCLUSIVE"
+            curl -s -X POST -H "Content-Type: application/json" \
+              --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
 
             jq --argjson ids "$CURR" ".${PLATFORM} = \$ids" state.json > tmp && mv tmp state.json
           }
 
           send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/
-          send_platform kick kick.json 2003190 https://kick.facepunch.com/
+          send_platform kick kick.json 3066993 https://kick.facepunch.com/
 
       - name: Commit state.json
         run: |
@@ -167,5 +172,5 @@ jobs:
           git config user.email "actions@github.com"
           git diff --quiet && exit 0
           git add state.json
-          git commit -m "Update drops"
+          git commit -m "Update drops state"
           git push
