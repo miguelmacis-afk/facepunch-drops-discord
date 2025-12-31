@@ -1,4 +1,10 @@
 {
-  "twitch": [],
-  "kick": []
+  "twitch": {
+    "drops": [],
+    "fail": 0
+  },
+  "kick": {
+    "drops": [],
+    "fail": 0
+  }
 }
