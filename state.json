@@ -1,3 +1,8 @@
 {
-
+  "twitch": [],
+  "kick": [],
+  "empty": {
+    "twitch": 0,
+    "kick": 0
+  }
 }
