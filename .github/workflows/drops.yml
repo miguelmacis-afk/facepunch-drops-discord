@@ -198,7 +198,7 @@ jobs:
                 else
                   TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
                   URL_DROP=$(jq -r '.streamers[0].url' <<<"$DROP")
-                  DESC="$NAME ⏱ $TIME | $STREAMERS"
+                  DESC="$NAME \n⏱ $TIME | $STREAMERS"
                 fi
 
                 EMBED=$(jq -n \
