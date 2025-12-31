@@ -109,7 +109,7 @@ jobs:
                 --arg u "$URL" \
                 --arg img "$EVENT_IMG" \
                 --argjson c "$COLOR" \
-                '{title:$t,url:$u,color:$c,thumbnail:{url:$img}}')
+                '{title:$t,url:$u,color:$c,image:{url:$img}}')
               curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EVENT_EMBED]}" "$DISCORD_WEBHOOK"
 
               TOTAL=$(jq length <<<"$NEW")
@@ -207,7 +207,7 @@ jobs:
                   --arg u "$URL_DROP" \
                   --arg img "$IMG" \
                   --argjson c "$COLOR" \
-                  '{title:$t,url:$u,description:$d,color:$c,image:{url:$img}}')
+                  '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
 
                 curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
                 i=$((i+1))
