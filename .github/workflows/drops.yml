@@ -39,44 +39,50 @@ jobs:
           const { chromium } = require('playwright');
           const fs = require('fs');
 
-          async function scrape(url, file) {
+          async function scrape(url, file, flag) {
             const browser = await chromium.launch();
             const page = await browser.newPage();
-            await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+            try {
+              await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-            const eventImg = await page.$eval('.hero-image img', el => el.src);
+              const eventImg = await page.$eval('.hero-image img', el => el.src);
 
-            const drops = await page.$$eval('a.drop-box', boxes =>
-              boxes.map(b => {
-                const img =
-                  b.querySelector('video img')?.src ||
-                  b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
-                  '';
+              const drops = await page.$$eval('a.drop-box', boxes =>
+                boxes.map(b => {
+                  const img =
+                    b.querySelector('video img')?.src ||
+                    b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
+                    '';
 
-                const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
-                  .map(a => ({ name: a.innerText.trim(), url: a.href }))
-                  .filter(s => s.name && s.url);
+                  const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
+                    .map(a => ({ name: a.innerText.trim(), url: a.href }))
+                    .filter(s => s.name && s.url);
 
-                return {
-                  id: b.getAttribute('href') || img,
-                  name: b.querySelector('.drop-type')?.innerText || '',
-                  time: b.querySelector('.drop-time span')?.innerText || '',
-                  img,
-                  streamers
-                };
-              }).filter(d => d.id)
-            );
+                  return {
+                    id: b.getAttribute('href') || img,
+                    name: b.querySelector('.drop-type')?.innerText || '',
+                    time: b.querySelector('.drop-time span')?.innerText || '',
+                    img,
+                    streamers
+                  };
+                }).filter(d => d.id)
+              );
 
-            fs.writeFileSync(file, JSON.stringify({ drops, eventImg }, null, 2));
-            await browser.close();
+              fs.writeFileSync(file, JSON.stringify({ drops, eventImg }, null, 2));
+            } catch (e) {
+              console.error(`❌ Error en ${flag}`, e);
+              fs.appendFileSync(process.env.GITHUB_ENV, `${flag}=1\n`);
+              throw e;
+            } finally {
+              await browser.close();
+            }
           }
 
           (async () => {
             try {
-              await scrape('https://twitch.facepunch.com/', 'twitch.json');
-              await scrape('https://kick.facep', 'kick.json');
+              await scrape('https://twitch.facepunch.com/', 'twitch.json', 'FAIL_TWITCH');
+              await scrape('https://kick.facepunch.com/', 'kick.json', 'FAIL_KICK');
             } catch (e) {
-              console.error(e);
               process.exit(1);
             }
           })();
@@ -238,13 +244,26 @@ jobs:
         env:
           DISCORD_WEBHOOK_ERRORS: ${{ secrets.DISCORD_WEBHOOK_ERRORS }}
         run: |
-          FAIL=$(jq '.twitch.fail // 0' state.json 2>/dev/null || echo 0)
+          FAIL_TWITCH=${FAIL_TWITCH:-0}
+          FAIL_KICK=${FAIL_KICK:-0}
+
+          [ "$FAIL_TWITCH" = "0" ] && [ "$FAIL_KICK" = "0" ] && exit 0
+
+          FAIL=$(jq '.twitch.fail // 0' state.json)
           FAIL=$((FAIL+1))
 
           if [ "$FAIL" -eq 1 ] || [ $((FAIL % 4)) -eq 0 ]; then
+            PLAT=""
+            [ "$FAIL_TWITCH" = "1" ] && PLAT="$PLAT\n❌ Twitch"
+            [ "$FAIL_KICK" = "1" ] && PLAT="$PLAT\n❌ Kick"
+
+            ACTIONS_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
             MSG=$(jq -n \
               --arg t "🚨 Error en Rust Drops Monitor" \
-              --arg d "El workflow falló.\nRevisa los logs en GitHub Actions." \
+              --arg d "Falló la obtención de drops en:$PLAT
+              
+              🔗 $ACTIONS_URL" \
               '{embeds:[{title:$t,description:$d,color:16711680}]}' )
 
             curl -s -X POST -H "Content-Type: application/json" \
