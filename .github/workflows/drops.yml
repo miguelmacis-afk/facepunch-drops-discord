@@ -74,7 +74,7 @@ jobs:
           (async () => {
             try {
               await scrape('https://twitch.facepunch.com/', 'twitch.json');
-              await scrape('https://kick.facepunch.com/', 'kick.json');
+              await scrape('https://kick.facep', 'kick.json');
             } catch (e) {
               console.error(e);
               process.exit(1);
