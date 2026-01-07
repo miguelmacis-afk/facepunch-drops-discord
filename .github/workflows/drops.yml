@@ -199,14 +199,14 @@ jobs:
                 STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join("
                 🎮")' <<<"$DROP")
                 if [ -z "$STREAMERS" ]; then
-                  TITLE="🎁 Drop General ${PLATFORM^} | $i/$TOTAL"
+                  TITLE="🌍 Drop General ${PLATFORM^} | $i/$TOTAL"
                   URL_DROP=$(jq -r '.id' <<<"$DROP")
-                  DESC=$'🎉 '"$NAME"'
+                  DESC=$'🎁 '"$NAME"'
                   ⏱ '"$TIME"
                 else
                   TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
                   URL_DROP=$(jq -r '.streamers[0].url' <<<"$DROP")
-                  DESC=$'🎉 '"$NAME"'
+                  DESC=$'🎁 '"$NAME"'
                   ⏱ '"$TIME"'
                   🎮 '"$STREAMERS"
                 fi
