@@ -44,7 +44,6 @@ jobs:
             const page = await browser.newPage();
             await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-            // Obtener imagen del evento
             const eventImg = await page.$eval('.hero-image img', el => el.src);
 
             const drops = await page.$$eval('a.drop-box', boxes =>
@@ -73,15 +72,29 @@ jobs:
           }
 
           (async () => {
-            await scrape('https://twitch.facepunch.com/', 'twitch.json');
-            await scrape('https://kick.facepunch.com/', 'kick.json');
+            try {
+              await scrape('https://twitch.facepunch.com/', 'twitch.json');
+              await scrape('https://kick.facepunch.com/', 'kick.json');
+            } catch (e) {
+              console.error(e);
+              process.exit(1);
+            }
           })();
           JS
 
       - name: Notify Discord
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
         run: |
+          send_drops () {
+            PAYLOAD=$1
+            IFS=',' read -ra HOOKS <<< "$DISCORD_WEBHOOKS_DROPS"
+            for H in "${HOOKS[@]}"; do
+              curl -s -X POST -H "Content-Type: application/json" \
+                --data "$PAYLOAD" "$H" >/dev/null
+            done
+          }
+
           send_platform () {
             PLATFORM=$1
             FILE=$2
@@ -93,37 +106,30 @@ jobs:
             CURR=$(jq -c '.drops' <<<"$JSON_FILE")
             EVENT_IMG=$(jq -r '.eventImg' <<<"$JSON_FILE")
 
-            # Detectar nuevos drops
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
             ')
             [ "$PREV" = "[]" ] && NEW="$CURR"
 
             COUNT=$(jq length <<<"$NEW")
-            COUNT=${COUNT:-0} 
+            COUNT=${COUNT:-0}
             if [ "$COUNT" -eq 0 ]; then
               echo "ℹ️ No hay nuevos drops en $PLATFORM"
             else
-               if [ "${PLATFORM^}" = "Kick" ]; then
-                URL="https://kick.facepunch.com/"
-                    else
-                URL="https://twitch.facepunch.com/"
-            fi
-              # Embed del evento
               EVENT_EMBED=$(jq -n \
                 --arg t "Drops ${PLATFORM^}" \
                 --arg u "$URL" \
                 --arg img "$EVENT_IMG" \
                 --argjson c "$COLOR" \
                 '{title:$t,url:$u,color:$c,image:{url:$img}}')
-              curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EVENT_EMBED]}" "$DISCORD_WEBHOOK"
+
+              send_drops "{\"embeds\":[$EVENT_EMBED]}"
 
               TOTAL=$(jq length <<<"$NEW")
               i=1
               jq -c '.[]' <<<"$NEW" | while read DROP; do
                 RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
 
-                # Traducciones completas
                 NAME=$(jq -n --arg n "$RAW_NAME" '
                   ($n // "") |
                   if test("Pickaxe";"i") then "Pico"
@@ -196,19 +202,16 @@ jobs:
                 IMG=$(jq -r '.img // ""' <<<"$DROP")
                 [ -z "$IMG" ] && IMG="$EVENT_IMG"
 
-                STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join("
-                🎮")' <<<"$DROP")
+                STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join("\n🎮 ")' <<<"$DROP")
+
                 if [ -z "$STREAMERS" ]; then
                   TITLE="🌍 Drop General ${PLATFORM^} | $i/$TOTAL"
                   URL_DROP=$(jq -r '.id' <<<"$DROP")
-                  DESC=$'🎁 '"$NAME"'
-                  ⏱ '"$TIME"
+                  DESC=$'🎁 '"$NAME"'\n⏱ '"$TIME"
                 else
                   TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
                   URL_DROP=$(jq -r '.streamers[0].url' <<<"$DROP")
-                  DESC=$'🎁 '"$NAME"'
-                  ⏱ '"$TIME"'
-                  🎮 '"$STREAMERS"
+                  DESC=$'🎁 '"$NAME"'\n⏱ '"$TIME"'\n🎮 '"$STREAMERS"
                 fi
 
                 EMBED=$(jq -n \
@@ -219,17 +222,36 @@ jobs:
                   --argjson c "$COLOR" \
                   '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
 
-                curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
+                send_drops "{\"embeds\":[$EMBED]}"
                 i=$((i+1))
               done
             fi
 
-            # Actualizar JSON
             jq --argjson ids "$CURR" ".${PLATFORM}.drops = \$ids | .${PLATFORM}.fail=0" state.json > tmp && mv tmp state.json
           }
 
-          send_platform twitch twitch.json 9502720 https://www.twitch.tv/directory/category/rust
-          send_platform kick kick.json 2003190 https://kick.com/category/rust
+          send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/
+          send_platform kick kick.json 2003190 https://kick.facepunch.com/
+
+      - name: Notify Discord (Error)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_ERRORS: ${{ secrets.DISCORD_WEBHOOK_ERRORS }}
+        run: |
+          FAIL=$(jq '.twitch.fail // 0' state.json 2>/dev/null || echo 0)
+          FAIL=$((FAIL+1))
+
+          if [ "$FAIL" -eq 1 ] || [ $((FAIL % 4)) -eq 0 ]; then
+            MSG=$(jq -n \
+              --arg t "🚨 Error en Rust Drops Monitor" \
+              --arg d "El workflow falló.\nRevisa los logs en GitHub Actions." \
+              '{embeds:[{title:$t,description:$d,color:16711680}]}' )
+
+            curl -s -X POST -H "Content-Type: application/json" \
+              --data "$MSG" "$DISCORD_WEBHOOK_ERRORS" >/dev/null
+          fi
+
+          jq ".twitch.fail=$FAIL | .kick.fail=$FAIL" state.json > tmp && mv tmp state.json
 
       - name: Commit state.json
         run: |
