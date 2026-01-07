@@ -8,7 +8,7 @@ const fs = require('fs');
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.goto(urlA, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('a.drop-box', { timeout: 20000 });
 
   // Scroll forzado
