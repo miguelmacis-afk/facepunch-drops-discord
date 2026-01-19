@@ -9,50 +9,47 @@ const fs = require('fs');
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 
   try {
-    // Usamos networkidle para asegurar que carguen las imágenes de los drops
+    // Usamos networkidle para esperar a que carguen las imágenes y scripts
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
 
-    // 1. Intentar capturar la imagen principal de forma segura (Opcional)
-    const heroImage = await page.evaluate(() => {
-      const img = document.querySelector('.hero-image img, .header-image img, .campaign-header img');
+    // --- ELIMINAMOS EL ERROR DEL HERO ---
+    // En lugar de $eval, usamos evaluate para que si no existe, devuelva null sin romper el script
+    const heroData = await page.evaluate(() => {
+      const img = document.querySelector('.hero-image img, .campaign-header img, .header-img');
       return img ? img.src : null;
     });
 
-    // 2. Esperar a los drops
-    await page.waitForSelector('a.drop-box', { timeout: 10000 });
+    await page.waitForSelector('a.drop-box', { timeout: 15000 });
 
-    // 3. Extraer los drops
+    // Scroll para asegurar que los elementos lazy-load aparezcan
+    await page.evaluate(async () => {
+      window.scrollBy(0, 1000);
+      await new Promise(r => setTimeout(r, 500));
+    });
+
     const drops = await page.evaluate(() => {
-      const boxes = Array.from(document.querySelectorAll('a.drop-box'));
-      return boxes.map(box => {
+      return [...document.querySelectorAll('a.drop-box')].map(box => {
         const id = box.querySelector('.drop-counter')?.dataset.itemid;
         if (!id) return null;
 
-        // Limpiar el nombre (a veces traen espacios o saltos de línea)
-        const name = box.querySelector('.drop-type')?.innerText.trim() ?? 'Rust Drop';
-        const time = box.querySelector('.drop-time span')?.innerText.trim() ?? 'Unknown';
-        
-        // Facepunch usa videos para los drops; intentamos sacar el poster o la imagen
+        // Facepunch a veces usa <img> y otras <video poster="...">
+        const imageElement = box.querySelector('img');
         const videoElement = box.querySelector('video');
-        const imgElement = box.querySelector('img');
-        
-        let img = null;
-        if (imgElement) {
-          img = imgElement.src;
-        } else if (videoElement) {
-          // Si es video, el poster suele ser la imagen, o reemplazamos extensión
-          img = videoElement.poster || videoElement.querySelector('source')?.src.replace('.mp4', '.jpg');
-        }
 
-        return { id, name, time, img };
+        return {
+          id: id,
+          name: box.querySelector('.drop-type')?.innerText.trim() ?? 'Rust Drop',
+          time: box.querySelector('.drop-time span')?.innerText.trim() ?? 'Unknown',
+          img: imageElement ? imageElement.src : (videoElement ? videoElement.poster : null)
+        };
       }).filter(d => d !== null);
     });
 
     fs.writeFileSync(out, JSON.stringify(drops, null, 2));
-    console.log(`Éxito: Se han encontrado ${drops.length} drops.`);
+    console.log(`✅ Scrape completado: ${drops.length} drops encontrados.`);
 
-  } catch (error) {
-    console.error("Error detectado:", error.message);
+  } catch (err) {
+    console.error("❌ Error durante el proceso:", err.message);
   } finally {
     await browser.close();
   }
