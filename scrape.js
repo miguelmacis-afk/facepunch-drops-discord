@@ -49,7 +49,7 @@ const fs = require('fs');
     console.log(`✅ Scrape completado: ${drops.length} drops encontrados.`);
 
   } catch (err) {
-    console.error("❌ Error durante el proceso:", err.message);
+    
   } finally {
     await browser.close();
   }
