@@ -15,8 +15,8 @@ const fs = require('fs');
       console.log(`🌐 Scraping ${name}: ${url}`);
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-      // Espera extra para contenido dinámico
-      await page.waitForTimeout(5000);
+      // --- Espera inicial para que React cargue todo ---
+      await page.waitForTimeout(7000);
 
       // --- HERO ROBUSTO ---
       const hero = await page.evaluate(() => {
@@ -33,27 +33,27 @@ const fs = require('fs');
       });
       console.log("🖼 Hero:", hero || "No encontrado");
 
-      // --- SCROLL para lazy-load ---
+      // --- SCROLL INFINITO dinámico para cargar todos los drops ---
       await page.evaluate(async () => {
-        await new Promise(resolve => {
-          let total = 0;
-          const distance = 500;
-          const timer = setInterval(() => {
-            window.scrollBy(0, distance);
-            total += distance;
-            if (total >= 6000) {
-              clearInterval(timer);
-              resolve();
-            }
-          }, 200);
-        });
+        let prevHeight = 0;
+        let sameCount = 0;
+        while (sameCount < 3) {
+          window.scrollBy(0, 1000);
+          await new Promise(r => setTimeout(r, 500));
+          const scrollHeight = document.body.scrollHeight;
+          if (scrollHeight === prevHeight) sameCount++;
+          else sameCount = 0;
+          prevHeight = scrollHeight;
+        }
       });
 
-      // --- SCRAPING DROPS ---
+      // --- Espera final por si React sigue cargando ---
+      await page.waitForTimeout(2000);
+
+      // --- SCRAPE DROPS ---
       const drops = await page.evaluate(() => {
-        // Intentamos varios selectores comunes
         const boxes = document.querySelectorAll(
-          'a.drop-box, .drop-card, .drop-container'
+          'a.drop-box, .drop-card, .drop-container, [class*="drop"]'
         );
 
         return [...boxes].map(box => {
@@ -76,9 +76,9 @@ const fs = require('fs');
           const img =
             box.querySelector('img')?.src ||
             box.querySelector('video')?.poster ||
+            box.querySelector('figure img')?.src ||
             null;
 
-          // Streamers (Twitch/Kick)
           const streamers = [...box.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
             .map(a => ({ name: a.innerText.trim(), url: a.href }))
             .filter(s => s.name && s.url);
@@ -89,8 +89,11 @@ const fs = require('fs');
         }).filter(Boolean);
       });
 
+      console.log(`✅ ${name}: ${drops.length} drops detectados`);
+
+      // --- Guardar JSON ---
       fs.writeFileSync(file, JSON.stringify({ hero, drops }, null, 2));
-      console.log(`✅ ${name}: ${drops.length} drops guardados en ${file}`);
+
     } catch (err) {
       console.error(`❌ Error scraping ${name}`, err);
       process.exit(1);
