@@ -34,15 +34,48 @@ jobs:
           fi
 
       - name: Scrape Twitch & Kick
-        run: node scrape.js
+        run: |
+          node scrape.js
 
-      - name: Notify Discord
+      - name: Notify Discord Drops
         env:
           DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
         run: |
-          # Aquí tu lógica de envíos Discord reutilizable
-          echo "✅ Drops procesados, notificaciones enviadas (script bash como antes)"
-          
+          # Ejemplo: envía cantidad de drops detectados
+          TWITCH=$(jq '.twitch.drops | length' state.json)
+          KICK=$(jq '.kick.drops | length' state.json)
+          CONTENT="✅ Drops procesados: Twitch: $TWITCH, Kick: $KICK"
+          curl -s -X POST -H "Content-Type: application/json" \
+            -d "{\"content\":\"$CONTENT\"}" \
+            $DISCORD_WEBHOOKS_DROPS
+
+      - name: Notify Discord Errors
+        if: failure() || always()
+        env:
+          DISCORD_WEBHOOK_ERRORS: ${{ secrets.DISCORD_WEBHOOK_ERRORS }}
+          FAIL_TWITCH: ${{ env.FAIL_TWITCH }}
+          FAIL_KICK: ${{ env.FAIL_KICK }}
+        run: |
+          FAIL_TWITCH=${FAIL_TWITCH:-0}
+          FAIL_KICK=${FAIL_KICK:-0}
+
+          if [ "$FAIL_TWITCH" = "1" ] || [ "$FAIL_KICK" = "1" ]; then
+            PLAT=""
+            [ "$FAIL_TWITCH" = "1" ] && PLAT="$PLAT\n❌ Twitch"
+            [ "$FAIL_KICK" = "1" ] && PLAT="$PLAT\n❌ Kick"
+
+            ACTIONS_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+            MSG=$(jq -n \
+              --arg t "🚨 Error en Rust Drops Monitor" \
+              --arg d "Falló la obtención de drops en:$PLAT\n🔗 $ACTIONS_URL" \
+              '{embeds:[{title:$t,description:$d,color:16711680}]}')
+
+            curl -s -X POST -H "Content-Type: application/json" \
+              -d "$MSG" \
+              $DISCORD_WEBHOOK_ERRORS
+          fi
+
       - name: Commit state.json
         run: |
           git config user.name "github-actions"
