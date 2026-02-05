@@ -48,12 +48,21 @@ jobs:
               IMG=${IMG:-$EVENTIMG}
               TIME=$(echo "$drop" | jq -r '.time')
               STREAMERS=$(echo "$drop" | jq -c '.streamers[]? | "[\(.name)](\(.url))"' | jq -s -r 'join(", ")')
+
+              if [ -n "$STREAMERS" ]; then
+                DESC="Hora: $TIME\nStreamers: $STREAMERS"
+              else
+                DESC="Hora: $TIME"
+              fi
+
               MSG=$(jq -n \
                 --arg t "$TITLE" \
-                --arg d "Hora: $TIME\nStreamers: $STREAMERS" \
+                --arg d "$DESC" \
                 --arg img "$IMG" \
                 '{embeds:[{title:$t,description:$d,image:{url:$img},color:65280}]}')
+              
               curl -s -X POST -H "Content-Type: application/json" -d "$MSG" $DISCORD_WEBHOOKS_DROPS
+              sleep 1
             done
           fi
 
@@ -69,12 +78,21 @@ jobs:
               IMG=${IMG:-$EVENTIMG}
               TIME=$(echo "$drop" | jq -r '.time')
               STREAMERS=$(echo "$drop" | jq -c '.streamers[]? | "[\(.name)](\(.url))"' | jq -s -r 'join(", ")')
+
+              if [ -n "$STREAMERS" ]; then
+                DESC="Hora: $TIME\nStreamers: $STREAMERS"
+              else
+                DESC="Hora: $TIME"
+              fi
+
               MSG=$(jq -n \
                 --arg t "$TITLE" \
-                --arg d "Hora: $TIME\nStreamers: $STREAMERS" \
+                --arg d "$DESC" \
                 --arg img "$IMG" \
                 '{embeds:[{title:$t,description:$d,image:{url:$img},color:16776960}]}')
+              
               curl -s -X POST -H "Content-Type: application/json" -d "$MSG" $DISCORD_WEBHOOKS_DROPS
+              sleep 1
             done
           fi
 
