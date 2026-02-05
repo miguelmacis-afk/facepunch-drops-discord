@@ -34,20 +34,45 @@ jobs:
           fi
 
       - name: Scrape Twitch & Kick
-        run: |
-          node scrape.js
+        run: node scrape.js
 
-      - name: Notify Discord Drops
+      - name: Notify Discord Drops (Twitch)
         env:
           DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
         run: |
-          # Ejemplo: envía cantidad de drops detectados
-          TWITCH=$(jq '.twitch.drops | length' state.json)
-          KICK=$(jq '.kick.drops | length' state.json)
-          CONTENT="✅ Drops procesados: Twitch: $TWITCH, Kick: $KICK"
-          curl -s -X POST -H "Content-Type: application/json" \
-            -d "{\"content\":\"$CONTENT\"}" \
-            $DISCORD_WEBHOOKS_DROPS
+          if [ -f twitch.json ]; then
+            jq -c '.drops[]' twitch.json | while read drop; do
+              TITLE=$(echo "$drop" | jq -r '.name')
+              IMG=$(echo "$drop" | jq -r '.img')
+              TIME=$(echo "$drop" | jq -r '.time')
+              STREAMERS=$(echo "$drop" | jq -c '.streamers[]? | "[\(.name)](\(.url))"' | jq -s -r 'join(", ")')
+              MSG=$(jq -n \
+                --arg t "$TITLE" \
+                --arg d "Hora: $TIME\nStreamers: $STREAMERS" \
+                --arg img "$IMG" \
+                '{embeds:[{title:$t,description:$d,image:{url:$img},color:65280}]}')
+              curl -s -X POST -H "Content-Type: application/json" -d "$MSG" $DISCORD_WEBHOOKS_DROPS
+            done
+          fi
+
+      - name: Notify Discord Drops (Kick)
+        env:
+          DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
+        run: |
+          if [ -f kick.json ]; then
+            jq -c '.drops[]' kick.json | while read drop; do
+              TITLE=$(echo "$drop" | jq -r '.name')
+              IMG=$(echo "$drop" | jq -r '.img')
+              TIME=$(echo "$drop" | jq -r '.time')
+              STREAMERS=$(echo "$drop" | jq -c '.streamers[]? | "[\(.name)](\(.url))"' | jq -s -r 'join(", ")')
+              MSG=$(jq -n \
+                --arg t "$TITLE" \
+                --arg d "Hora: $TIME\nStreamers: $STREAMERS" \
+                --arg img "$IMG" \
+                '{embeds:[{title:$t,description:$d,image:{url:$img},color:16776960}]}')
+              curl -s -X POST -H "Content-Type: application/json" -d "$MSG" $DISCORD_WEBHOOKS_DROPS
+            done
+          fi
 
       - name: Notify Discord Errors
         if: failure() || always()
