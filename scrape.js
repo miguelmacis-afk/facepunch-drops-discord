@@ -12,8 +12,8 @@ async function scrape(url, file) {
   const eventImg = await page.$eval('.hero-image img', el => el.src).catch(() => '');
   console.log(`🖼 Hero image: ${eventImg || 'No encontrado'}`);
 
-  // Drops
-  const drops = await page.$$eval('a.drop-box', boxes =>
+  // Selecciona todos los drops: generales y exclusivos
+  const drops = await page.$$eval('a.drop-box, a.drop-exclusive', boxes =>
     boxes.map(b => {
       const img = b.querySelector('video img')?.src ||
                   b.querySelector('video source')?.src?.replace('.mp4', '.jpg') || '';
@@ -22,17 +22,20 @@ async function scrape(url, file) {
         .map(a => ({ name: a.innerText.trim(), url: a.href }))
         .filter(s => s.name && s.url);
 
+      const type = streamers.length > 0 ? 'Exclusivo' : 'General';
+
       return {
         id: b.getAttribute('href') || img,
-        name: b.querySelector('.drop-type')?.innerText || 'General',
+        name: b.querySelector('.drop-type')?.innerText || type,
         time: b.querySelector('.drop-time span')?.innerText || '',
         img,
-        streamers // vacío si general
+        streamers,
+        type
       };
     })
   );
 
-  console.log(`✅ ${file.split('.')[0]}: ${drops.length} drops válidos detectados`);
+  console.log(`✅ ${file.split('.')[0]}: ${drops.length} drops detectados`);
 
   fs.writeFileSync(file, JSON.stringify({ eventImg, drops }, null, 2));
   await browser.close();
@@ -40,7 +43,9 @@ async function scrape(url, file) {
 
 (async () => {
   try {
+    // Twitch
     await scrape('https://twitch.facepunch.com/', 'twitch.json');
+    // Kick
     await scrape('https://kick.facepunch.com/', 'kick.json');
   } catch (e) {
     console.error('❌ Error scraping', e);
