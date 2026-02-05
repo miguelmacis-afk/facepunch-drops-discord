@@ -6,26 +6,16 @@ async function scrape(url, file) {
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-  // Hero image del evento
-  let eventImg = null;
-  try {
-    eventImg = await page.$eval('.hero-image img', el => el.src);
-  } catch (e) {
-    console.log("🖼 Hero image no encontrado");
-  }
-
-  // Seleccionar todos los drops, incluidos los generales
-  const drops = await page.$$eval('div.drop-box', boxes =>
+  const drops = await page.$$eval('a.drop-box', boxes =>
     boxes.map(b => {
+      const name = b.querySelector('.drop-type')?.innerText.trim() || '';
+      const time = b.querySelector('.drop-time span')?.innerText.trim() || '';
       const img =
         b.querySelector('video img')?.src ||
         b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
-        '';
+        null;
 
-      const name = b.querySelector('.drop-type')?.innerText.trim() || '';
-      const time = b.querySelector('.drop-time span')?.innerText.trim() || '';
-
-      // Streamers si existen
+      // Streamers (puede estar vacío)
       const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
         .map(a => ({
           name: a.innerText.trim(),
@@ -34,25 +24,21 @@ async function scrape(url, file) {
         }))
         .filter(s => s.name && s.url);
 
-      // Identificador único
-      const id = b.querySelector('a.drop-box-body')?.href || img || name;
+      const id = b.href || img || name;
 
-      return {
-        id,
-        name,
-        time,
-        img: img || null,
-        streamers,
-        type: streamers.length > 0 ? "Exclusivo" : "General"
-      };
+      // Tipo: Exclusivo si hay streamer, General si no
+      const type = streamers.length > 0 ? "Exclusivo" : "General";
+
+      return { id, name, time, img, streamers, type };
     })
   );
 
-  fs.writeFileSync(file, JSON.stringify({ drops, eventImg }, null, 2));
-  console.log(`✅ ${file.replace('.json','')} detectados: ${drops.length}`);
+  fs.writeFileSync(file, JSON.stringify({ drops, eventImg: null }, null, 2));
+  console.log(`✅ ${file} detectados: ${drops.length}`);
   await browser.close();
 }
 
+// Ejecutar scraping
 (async () => {
   await scrape('https://twitch.facepunch.com/', 'twitch.json');
   await scrape('https://kick.facepunch.com/', 'kick.json');
