@@ -12,40 +12,46 @@ async function scrape(url, file) {
   const eventImg = await page.$eval('.hero-image img', el => el.src).catch(() => '');
   console.log(`🖼 Hero image: ${eventImg || 'No encontrado'}`);
 
-  // Selecciona todos los drops: generales y exclusivos
-  const drops = await page.$$eval('a.drop-box, a.drop-exclusive', boxes =>
+  // Todos los drops
+  const drops = await page.$$eval('div.drop-box', boxes =>
     boxes.map(b => {
-      const img = b.querySelector('video img')?.src ||
-                  b.querySelector('video source')?.src?.replace('.mp4', '.jpg') || '';
+      const img = b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
+                  b.querySelector('video img')?.src || '';
 
-      const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
-        .map(a => ({ name: a.innerText.trim(), url: a.href }))
+      const streamerLinks = [...b.querySelectorAll('a.streamer-info')]
+        .map(a => {
+          const name = a.querySelector('.streamer-name')?.innerText.trim() || '';
+          const url = a.href || '';
+          const avatar = a.querySelector('img')?.src || '';
+          return { name, url, avatar };
+        })
         .filter(s => s.name && s.url);
 
-      const type = streamers.length > 0 ? 'Exclusivo' : 'General';
+      const type = streamerLinks.length > 0 ? 'Exclusivo' : 'General';
+
+      const name = b.querySelector('.drop-type')?.innerText || type;
+      const time = b.querySelector('.drop-time span')?.innerText || '';
 
       return {
-        id: b.getAttribute('href') || img,
-        name: b.querySelector('.drop-type')?.innerText || type,
-        time: b.querySelector('.drop-time span')?.innerText || '',
+        id: b.querySelector('a.drop-box-body')?.href || img,
+        name,
+        time,
         img,
-        streamers,
+        streamers: streamerLinks,
         type
       };
     })
   );
 
   console.log(`✅ ${file.split('.')[0]}: ${drops.length} drops detectados`);
-
   fs.writeFileSync(file, JSON.stringify({ eventImg, drops }, null, 2));
+
   await browser.close();
 }
 
 (async () => {
   try {
-    // Twitch
     await scrape('https://twitch.facepunch.com/', 'twitch.json');
-    // Kick
     await scrape('https://kick.facepunch.com/', 'kick.json');
   } catch (e) {
     console.error('❌ Error scraping', e);
