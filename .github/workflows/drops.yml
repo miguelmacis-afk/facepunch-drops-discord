@@ -34,94 +34,199 @@ jobs:
           fi
 
       - name: Scrape Twitch & Kick
-        run: node scrape.js
-
-      - name: Notify Discord Drops (Twitch)
-        env:
-          DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
         run: |
-          if [ -f twitch.json ]; then
-            EVENTIMG=$(jq -r '.eventImg // empty' twitch.json)
-            jq -c '.drops[]' twitch.json | while read drop; do
-              TITLE=$(echo "$drop" | jq -r '.name')
-              IMG=$(echo "$drop" | jq -r '.img // empty')
-              IMG=${IMG:-$EVENTIMG}
-              TIME=$(echo "$drop" | jq -r '.time')
-              STREAMERS=$(echo "$drop" | jq -c '.streamers[]? | "[\(.name)](\(.url))"' | jq -s -r 'join(", ")')
+          node <<'JS'
+          const fs = require('fs');
+          const { chromium } = require('playwright');
 
-              if [ -n "$STREAMERS" ]; then
-                DESC="Hora: $TIME\nStreamers: $STREAMERS"
-              else
-                DESC="Hora: $TIME"
-              fi
+          async function scrape(url, file) {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+            console.log(`🌐 Scraping: ${url}`);
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-              MSG=$(jq -n \
-                --arg t "$TITLE" \
-                --arg d "$DESC" \
-                --arg img "$IMG" \
-                '{embeds:[{title:$t,description:$d,image:{url:$img},color:65280}]}')
-              
-              curl -s -X POST -H "Content-Type: application/json" -d "$MSG" $DISCORD_WEBHOOKS_DROPS
-              sleep 1
-            done
-          fi
+            const eventImg = await page.$eval('.hero-image img', el => el.src).catch(() => '');
+            console.log(`🖼 Hero image: ${eventImg || 'No encontrado'}`);
 
-      - name: Notify Discord Drops (Kick)
+            const drops = await page.$$eval('div.drop-box', boxes =>
+              boxes.map(b => {
+                const img = b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
+                            b.querySelector('video img')?.src || '';
+
+                const streamerLinks = [...b.querySelectorAll('a.streamer-info')]
+                  .map(a => {
+                    const name = a.querySelector('.streamer-name')?.innerText.trim() || '';
+                    const url = a.href || '';
+                    const avatar = a.querySelector('img')?.src || '';
+                    return { name, url, avatar };
+                  })
+                  .filter(s => s.name && s.url);
+
+                const type = streamerLinks.length > 0 ? 'Exclusivo' : 'General';
+                const name = b.querySelector('.drop-type')?.innerText || type;
+                const time = b.querySelector('.drop-time span')?.innerText || '';
+
+                return {
+                  id: b.querySelector('a.drop-box-body')?.href || img,
+                  name,
+                  time,
+                  img,
+                  streamers: streamerLinks,
+                  type
+                };
+              })
+            );
+
+            console.log(`✅ ${file.split('.')[0]}: ${drops.length} drops detectados`);
+            fs.writeFileSync(file, JSON.stringify({ drops, eventImg }, null, 2));
+            await browser.close();
+          }
+
+          (async () => {
+            try {
+              await scrape('https://twitch.facepunch.com/', 'twitch.json');
+              await scrape('https://kick.facepunch.com/', 'kick.json');
+            } catch (e) {
+              console.error(e);
+              process.exit(1);
+            }
+          })();
+          JS
+
+      - name: Notify Discord
         env:
-          DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          if [ -f kick.json ]; then
-            EVENTIMG=$(jq -r '.eventImg // empty' kick.json)
-            jq -c '.drops[]' kick.json | while read drop; do
-              TITLE=$(echo "$drop" | jq -r '.name')
-              IMG=$(echo "$drop" | jq -r '.img // empty')
-              IMG=${IMG:-$EVENTIMG}
-              TIME=$(echo "$drop" | jq -r '.time')
-              STREAMERS=$(echo "$drop" | jq -c '.streamers[]? | "[\(.name)](\(.url))"' | jq -s -r 'join(", ")')
+          send_platform () {
+            PLATFORM=$1
+            FILE=$2
+            COLOR=$3
 
-              if [ -n "$STREAMERS" ]; then
-                DESC="Hora: $TIME\nStreamers: $STREAMERS"
-              else
-                DESC="Hora: $TIME"
-              fi
+            PREV=$(jq -c ".${PLATFORM}.drops // []" state.json)
+            JSON_FILE=$(cat "$FILE")
+            CURR=$(jq -c '.drops' <<<"$JSON_FILE")
+            EVENT_IMG=$(jq -r '.eventImg' <<<"$JSON_FILE")
 
-              MSG=$(jq -n \
-                --arg t "$TITLE" \
-                --arg d "$DESC" \
-                --arg img "$IMG" \
-                '{embeds:[{title:$t,description:$d,image:{url:$img},color:16776960}]}')
-              
-              curl -s -X POST -H "Content-Type: application/json" -d "$MSG" $DISCORD_WEBHOOKS_DROPS
-              sleep 1
-            done
-          fi
+            NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
+              [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
+            ')
+            [ "$PREV" = "[]" ] && NEW="$CURR"
 
-      - name: Notify Discord Errors
-        if: failure() || always()
-        env:
-          DISCORD_WEBHOOK_ERRORS: ${{ secrets.DISCORD_WEBHOOK_ERRORS }}
-          FAIL_TWITCH: ${{ env.FAIL_TWITCH }}
-          FAIL_KICK: ${{ env.FAIL_KICK }}
-        run: |
-          FAIL_TWITCH=${FAIL_TWITCH:-0}
-          FAIL_KICK=${FAIL_KICK:-0}
+            COUNT=$(jq length <<<"$NEW")
+            COUNT=${COUNT:-0} 
+            if [ "$COUNT" -eq 0 ]; then
+              echo "ℹ️ No hay nuevos drops en $PLATFORM"
+            else
+              TOTAL=$(jq length <<<"$NEW")
+              i=1
+              jq -c '.[]' <<<"$NEW" | while read DROP; do
+                RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
+                NAME=$(jq -n --arg n "$RAW_NAME" '
+                  ($n // "") |
+                  if test("Pickaxe";"i") then "Pico"
+                  elif test("Hatchet";"i") then "Hacha"
+                  elif test("Ice Pickaxe";"i") then "Pico de hielo"
+                  elif test("Salvaged Icepick";"i") then "Icepick recuperado"
+                  elif test("Jackhammer";"i") then "Martillo neumático"
+                  elif test("Hammer";"i") then "Martillo"
+                  elif test("Crossbow";"i") then "Ballesta"
+                  elif test("Bow";"i") then "Arco"
+                  elif test("Assault Rifle";"i") then "Rifle de asalto"
+                  elif test("Bolt Action Rifle";"i") then "Rifle de cerrojo"
+                  elif test("Semi-Automatic Rifle";"i") then "Rifle semiautomático"
+                  elif test("Custom SMG";"i") then "SMG personalizada"
+                  elif test("MP5";"i") then "MP5"
+                  elif test("Thompson";"i") then "Thompson"
+                  elif test("M249";"i") then "M249"
+                  elif test("Revolver";"i") then "Revólver"
+                  elif test("M92 Pistol";"i") then "Pistola M92"
+                  elif test("Pump Shotgun";"i") then "Escopeta de corredera"
+                  elif test("Double Barrel Shotgun";"i") then "Escopeta de doble cañón"
+                  elif test("Handmade Shell";"i") then "Escopeta artesanal"
+                  elif test("Rocket Launcher";"i") then "Lanzacohetes"
+                  elif test("Waterpipe Shotgun";"i") then "Escopeta de tubería"
+                  elif test("Grenade";"i") then "Granada"
+                  elif test("Beancan Grenade";"i") then "Granada Beancan"
+                  elif test("F1 Grenade";"i") then "Granada F1"
+                  elif test("Smoke Grenade";"i") then "Granada de humo"
+                  elif test("Sheet Metal Door";"i") then "Puerta de chapa"
+                  elif test("Armored Door";"i") then "Puerta blindada"
+                  elif test("Garage Door";"i") then "Puerta de garaje"
+                  elif test("Large Wood Box";"i") then "Caja de madera grande"
+                  elif test("Small Wood Box";"i") then "Caja de madera pequeña"
+                  elif test("Small Oil Refinery";"i") then "Pequeña refinería de petróleo"
+                  elif test("Large Oil Refinery";"i") then "Gran refinería de petróleo"
+                  elif test("Recycler";"i") then "Recicladora"
+                  elif test("Furnace";"i") then "Horno"
+                  elif test("Large Furnace";"i") then "Horno grande"
+                  elif test("Sleeping Bag";"i") then "Saco de dormir"
+                  elif test("Tool Cupboard";"i") then "Armario de herramientas"
+                  elif test("Roadsign Helmet";"i") then "Casco Roadsign"
+                  elif test("Coffee Can Helmet";"i") then "Casco lata de café"
+                  elif test("Metal Facemask";"i") then "Mascarilla metálica"
+                  elif test("Roadsign Jacket";"i") then "Chaqueta Roadsign"
+                  elif test("Roadsign Pants";"i") then "Pantalones Roadsign"
+                  elif test("Hoodie";"i") then "Sudadera"
+                  elif test("Pants";"i") then "Pantalones"
+                  elif test("Boots";"i") then "Botas"
+                  elif test("Gloves";"i") then "Guantes"
+                  elif test("Chest Plate";"i") then "Placa de pecho"
+                  elif test("Facemask";"i") then "Mascarilla"
+                  elif test("Bandana";"i") then "Bandana"
+                  elif test("Balaclava";"i") then "Pasamontañas"
+                  elif test("Beanie Hat";"i") then "Gorro"
+                  elif test("Hard Suit";"i") then "Traje duro"
+                  elif test("Hazmat Suit";"i") then "Traje hazmat"
+                  elif test("Wetsuit";"i") then "Traje de buceo"
+                  elif test("Backpack";"i") then "Mochila"
+                  elif test("Rock";"i") then "Roca"
+                  elif test("Roadsign Kilt";"i") then "Falda Roadsign"
+                  elif test("Cargo Pants";"i") then "Pantalones cargo"
+                  elif test("Jacket";"i") then "Chaqueta"
+                  elif test("Tactical Gloves";"i") then "Guantes tácticos"
+                  else $n end
+                ' --raw-output)
 
-          if [ "$FAIL_TWITCH" = "1" ] || [ "$FAIL_KICK" = "1" ]; then
-            PLAT=""
-            [ "$FAIL_TWITCH" = "1" ] && PLAT="$PLAT\n❌ Twitch"
-            [ "$FAIL_KICK" = "1" ] && PLAT="$PLAT\n❌ Kick"
+                TIME=$(jq -r '.time // ""' <<<"$DROP" | tr -d '\n\r')
+                TIME=$(echo "$TIME" | perl -pe 's/\s*HOURS?/ Horas/i; s/Unknown/Desconocido/i')
 
-            ACTIONS_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+                IMG=$(jq -r '.img // ""' <<<"$DROP")
+                [ -z "$IMG" ] && IMG="$EVENT_IMG"
 
-            MSG=$(jq -n \
-              --arg t "🚨 Error en Rust Drops Monitor" \
-              --arg d "Falló la obtención de drops en:$PLAT\n🔗 $ACTIONS_URL" \
-              '{embeds:[{title:$t,description:$d,color:16711680}]}')
+                STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join("
+                🎮")' <<<"$DROP")
 
-            curl -s -X POST -H "Content-Type: application/json" \
-              -d "$MSG" \
-              $DISCORD_WEBHOOK_ERRORS
-          fi
+                if [ -z "$STREAMERS" ]; then
+                  TITLE="🌍 Drop General ${PLATFORM^} | $i/$TOTAL"
+                  URL_DROP=$(jq -r '.id' <<<"$DROP")
+                  DESC=$'🎁 '"$NAME"'
+                  ⏱ '"$TIME"
+                else
+                  TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
+                  URL_DROP=$(jq -r '.streamers[0].url' <<<"$DROP")
+                  DESC=$'🎁 '"$NAME"'
+                  ⏱ '"$TIME"'
+                  🎮 '"$STREAMERS"
+                fi
+
+                EMBED=$(jq -n \
+                  --arg t "$TITLE" \
+                  --arg d "$DESC" \
+                  --arg u "$URL_DROP" \
+                  --arg img "$IMG" \
+                  --argjson c "$COLOR" \
+                  '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
+
+                curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
+                i=$((i+1))
+              done
+            fi
+
+            jq --argjson ids "$CURR" ".${PLATFORM}.drops = \$ids | .${PLATFORM}.fail=0" state.json > tmp && mv tmp state.json
+          }
+
+          send_platform twitch twitch.json 9502720
+          send_platform kick kick.json 2003190
 
       - name: Commit state.json
         run: |
