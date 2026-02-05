@@ -6,23 +6,26 @@ async function scrape(url, file) {
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-  // Obtener imagen del evento (hero image)
+  // Hero image del evento
   let eventImg = null;
   try {
     eventImg = await page.$eval('.hero-image img', el => el.src);
   } catch (e) {
-    console.log("🖼 Hero image: No encontrado");
+    console.log("🖼 Hero image no encontrado");
   }
 
+  // Seleccionar todos los drops, incluidos los generales
   const drops = await page.$$eval('div.drop-box', boxes =>
     boxes.map(b => {
-      // Imagen del drop
       const img =
         b.querySelector('video img')?.src ||
         b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
         '';
 
-      // Streamers asociados
+      const name = b.querySelector('.drop-type')?.innerText.trim() || '';
+      const time = b.querySelector('.drop-time span')?.innerText.trim() || '';
+
+      // Streamers si existen
       const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
         .map(a => ({
           name: a.innerText.trim(),
@@ -31,11 +34,14 @@ async function scrape(url, file) {
         }))
         .filter(s => s.name && s.url);
 
+      // Identificador único
+      const id = b.querySelector('a.drop-box-body')?.href || img || name;
+
       return {
-        id: b.querySelector('a.drop-box-body')?.href || img,
-        name: b.querySelector('.drop-type')?.innerText.trim() || '',
-        time: b.querySelector('.drop-time span')?.innerText.trim() || '',
-        img,
+        id,
+        name,
+        time,
+        img: img || null,
         streamers,
         type: streamers.length > 0 ? "Exclusivo" : "General"
       };
