@@ -41,9 +41,11 @@ jobs:
           DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
         run: |
           if [ -f twitch.json ]; then
+            EVENTIMG=$(jq -r '.eventImg // empty' twitch.json)
             jq -c '.drops[]' twitch.json | while read drop; do
               TITLE=$(echo "$drop" | jq -r '.name')
-              IMG=$(echo "$drop" | jq -r '.img')
+              IMG=$(echo "$drop" | jq -r '.img // empty')
+              IMG=${IMG:-$EVENTIMG}
               TIME=$(echo "$drop" | jq -r '.time')
               STREAMERS=$(echo "$drop" | jq -c '.streamers[]? | "[\(.name)](\(.url))"' | jq -s -r 'join(", ")')
               MSG=$(jq -n \
@@ -60,9 +62,11 @@ jobs:
           DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
         run: |
           if [ -f kick.json ]; then
+            EVENTIMG=$(jq -r '.eventImg // empty' kick.json)
             jq -c '.drops[]' kick.json | while read drop; do
               TITLE=$(echo "$drop" | jq -r '.name')
-              IMG=$(echo "$drop" | jq -r '.img')
+              IMG=$(echo "$drop" | jq -r '.img // empty')
+              IMG=${IMG:-$EVENTIMG}
               TIME=$(echo "$drop" | jq -r '.time')
               STREAMERS=$(echo "$drop" | jq -c '.streamers[]? | "[\(.name)](\(.url))"' | jq -s -r 'join(", ")')
               MSG=$(jq -n \
