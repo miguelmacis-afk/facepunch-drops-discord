@@ -2,20 +2,20 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 
 (async () => {
-  const urls = [
-    { platform: 'twitch', url: 'https://twitch.facepunch.com/', file: 'twitch.json' },
-    { platform: 'kick', url: 'https://kick.facepunch.com/', file: 'kick.json' }
+  const platforms = [
+    { name: 'twitch', url: 'https://twitch.facepunch.com/', file: 'twitch.json' },
+    { name: 'kick', url: 'https://kick.facepunch.com/', file: 'kick.json' }
   ];
 
-  for (const { platform, url, file } of urls) {
+  for (const { name, url, file } of platforms) {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 
     try {
-      console.log(`🌐 Scrapeando ${platform}: ${url}`);
+      console.log(`🌐 Scraping ${name}: ${url}`);
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-      // Espera JS dinámico
+      // Espera extra para contenido dinámico
       await page.waitForTimeout(5000);
 
       // --- HERO ROBUSTO ---
@@ -31,10 +31,9 @@ const fs = require('fs');
         }
         return null;
       });
-
       console.log("🖼 Hero:", hero || "No encontrado");
 
-      // --- SCROLL para lazy load ---
+      // --- SCROLL para lazy-load ---
       await page.evaluate(async () => {
         await new Promise(resolve => {
           let total = 0;
@@ -50,9 +49,12 @@ const fs = require('fs');
         });
       });
 
-      // --- SCRAPE DROPS ---
+      // --- SCRAPING DROPS ---
       const drops = await page.evaluate(() => {
-        const boxes = document.querySelectorAll('a.drop-box');
+        // Intentamos varios selectores comunes
+        const boxes = document.querySelectorAll(
+          'a.drop-box, .drop-card, .drop-container'
+        );
 
         return [...boxes].map(box => {
           const id =
@@ -88,9 +90,9 @@ const fs = require('fs');
       });
 
       fs.writeFileSync(file, JSON.stringify({ hero, drops }, null, 2));
-      console.log(`✅ ${platform} drops guardados en ${file}`);
+      console.log(`✅ ${name}: ${drops.length} drops guardados en ${file}`);
     } catch (err) {
-      console.error(`❌ Error en ${platform}`, err);
+      console.error(`❌ Error scraping ${name}`, err);
       process.exit(1);
     } finally {
       await browser.close();
