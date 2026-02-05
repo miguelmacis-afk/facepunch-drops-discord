@@ -4,12 +4,10 @@ const fs = require('fs');
 (async () => {
   const stateFile = 'state.json';
 
-  // Carga state.json actual o crea uno nuevo
-  let state = { twitch: { drops: [], fail: 0 }, kick: { drops: [], fail: 0 } };
+  // Cargar o crear state.json
+  let state = { twitch: { drops: [], fail: 0, hero: null }, kick: { drops: [], fail: 0, hero: null } };
   if (fs.existsSync(stateFile)) {
-    try {
-      state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-    } catch {}
+    try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch {}
   }
 
   const platforms = [
@@ -24,44 +22,41 @@ const fs = require('fs');
     try {
       console.log(`🌐 Scraping ${name}: ${url}`);
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.waitForTimeout(7000); // espera a que React cargue todo
 
-      // Espera inicial para React
-      await page.waitForTimeout(7000);
-
-      // HERO
+      // --- HERO ROBUSTO ---
       const hero = await page.evaluate(() => {
-        const selectors = ['.hero-image img', '.campaign-header img', '.header-img img'];
+        const selectors = ['.hero-image img', '.campaign-header img', '.header-img img', '.hero img'];
         for (const sel of selectors) {
           const el = document.querySelector(sel);
           if (el) return el.src;
         }
         return null;
       });
+
       console.log(`🖼 Hero ${name}:`, hero || "No encontrado");
 
-      // Scroll infinito dinámico para cargar todos los drops
+      // --- SCROLL DINÁMICO para cargar todos los drops ---
       await page.evaluate(async () => {
-        let prevHeight = 0;
-        let sameCount = 0;
+        let prevHeight = 0, sameCount = 0;
         while (sameCount < 3) {
           window.scrollBy(0, 1000);
           await new Promise(r => setTimeout(r, 500));
-          const scrollHeight = document.body.scrollHeight;
-          if (scrollHeight === prevHeight) sameCount++;
-          else sameCount = 0;
-          prevHeight = scrollHeight;
+          const h = document.body.scrollHeight;
+          if (h === prevHeight) sameCount++; else sameCount = 0;
+          prevHeight = h;
         }
       });
 
       await page.waitForTimeout(2000);
 
-      // Scrape de drops
+      // --- SCRAPING DE DROPS ---
       let drops = await page.evaluate(() => {
         const boxes = document.querySelectorAll('a.drop-box, .drop-card, .drop-container, [class*="drop"]');
-
         const seen = new Set();
+        const results = [];
 
-        return [...boxes].map(box => {
+        boxes.forEach(box => {
           const id =
             box.querySelector('.drop-counter')?.dataset.itemid ||
             box.dataset.itemid ||
@@ -88,23 +83,31 @@ const fs = require('fs');
             .map(a => ({ name: a.innerText.trim(), url: a.href }))
             .filter(s => s.name && s.url);
 
-          // Filtrado de drops inválidos o repetidos
-          if (!id || !name || seen.has(id)) return null;
+          // Ignorar drops inválidos o duplicados
+          if (!id || !name || seen.has(id)) return;
           seen.add(id);
 
-          return { id, name, time: time || "Unknown", img, streamers };
-        }).filter(Boolean);
+          // Si hay streamers, crear un drop por cada streamer
+          if (streamers.length > 0) {
+            streamers.forEach(s => {
+              results.push({ id: `${id}-${s.name}`, name, time: time || "Unknown", img, streamers: [s] });
+            });
+          } else {
+            results.push({ id, name, time: time || "Unknown", img, streamers: [] });
+          }
+        });
+
+        return results;
       });
 
       console.log(`✅ ${name}: ${drops.length} drops válidos detectados`);
 
-      // Actualizar state.json
+      // Guardar directamente en state.json
       state[name] = { drops, fail: 0, hero };
       fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
 
     } catch (err) {
       console.error(`❌ Error scraping ${name}`, err);
-      // Marcar fallo en state.json
       state[name].fail = 1;
       fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
       process.exit(1);
