@@ -1,60 +1,53 @@
-const fs = require('fs');
 const { chromium } = require('playwright');
+const fs = require('fs');
 
 async function scrape(url, file) {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch();
   const page = await browser.newPage();
-
-  console.log(`🌐 Scraping: ${url}`);
   await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-  // Hero image
-  const eventImg = await page.$eval('.hero-image img', el => el.src).catch(() => '');
-  console.log(`🖼 Hero image: ${eventImg || 'No encontrado'}`);
+  // Obtener imagen del evento (hero image)
+  let eventImg = null;
+  try {
+    eventImg = await page.$eval('.hero-image img', el => el.src);
+  } catch (e) {
+    console.log("🖼 Hero image: No encontrado");
+  }
 
-  // Todos los drops
   const drops = await page.$$eval('div.drop-box', boxes =>
     boxes.map(b => {
-      const img = b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
-                  b.querySelector('video img')?.src || '';
+      // Imagen del drop
+      const img =
+        b.querySelector('video img')?.src ||
+        b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
+        '';
 
-      const streamerLinks = [...b.querySelectorAll('a.streamer-info')]
-        .map(a => {
-          const name = a.querySelector('.streamer-name')?.innerText.trim() || '';
-          const url = a.href || '';
-          const avatar = a.querySelector('img')?.src || '';
-          return { name, url, avatar };
-        })
+      // Streamers asociados
+      const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
+        .map(a => ({
+          name: a.innerText.trim(),
+          url: a.href,
+          avatar: a.querySelector('img')?.src || ''
+        }))
         .filter(s => s.name && s.url);
-
-      const type = streamerLinks.length > 0 ? 'Exclusivo' : 'General';
-
-      const name = b.querySelector('.drop-type')?.innerText || type;
-      const time = b.querySelector('.drop-time span')?.innerText || '';
 
       return {
         id: b.querySelector('a.drop-box-body')?.href || img,
-        name,
-        time,
+        name: b.querySelector('.drop-type')?.innerText.trim() || '',
+        time: b.querySelector('.drop-time span')?.innerText.trim() || '',
         img,
-        streamers: streamerLinks,
-        type
+        streamers,
+        type: streamers.length > 0 ? "Exclusivo" : "General"
       };
     })
   );
 
-  console.log(`✅ ${file.split('.')[0]}: ${drops.length} drops detectados`);
-  fs.writeFileSync(file, JSON.stringify({ eventImg, drops }, null, 2));
-
+  fs.writeFileSync(file, JSON.stringify({ drops, eventImg }, null, 2));
+  console.log(`✅ ${file.replace('.json','')} detectados: ${drops.length}`);
   await browser.close();
 }
 
 (async () => {
-  try {
-    await scrape('https://twitch.facepunch.com/', 'twitch.json');
-    await scrape('https://kick.facepunch.com/', 'kick.json');
-  } catch (e) {
-    console.error('❌ Error scraping', e);
-    process.exit(1);
-  }
+  await scrape('https://twitch.facepunch.com/', 'twitch.json');
+  await scrape('https://kick.facepunch.com/', 'kick.json');
 })();
