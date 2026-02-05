@@ -1,6 +1,147 @@
 {
   "twitch": {
-    "drops": [],
+    "drops": [
+      {
+        "id": "https://www.twitch.tv/alpacasita",
+        "name": "LARGE BACKPACK",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/alpacasita-backpack.jpg",
+        "streamers": [
+          {
+            "name": "ALPACASITA",
+            "url": "https://www.twitch.tv/alpacasita",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ced046c7-2301-4b27-83e0-d30cee17fd30-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/ferb",
+        "name": "ASSAULT RIFLE",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/ferb-ak47.jpg",
+        "streamers": [
+          {
+            "name": "FERB",
+            "url": "https://www.twitch.tv/ferb",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/dee7b522-4e71-41e0-a323-863b8c547874-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/a1dan8992",
+        "name": "HUNTING BOW",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/a1dan8992-bow.jpg",
+        "streamers": [
+          {
+            "name": "A1DAN8992",
+            "url": "https://www.twitch.tv/a1dan8992",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/f91a788d-75a3-4c4f-8ddf-8feaa934255e-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/R3crutaTV",
+        "name": "MP5A4",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/r3crutatv-mp5a4.jpg",
+        "streamers": [
+          {
+            "name": "R3CRUTATV",
+            "url": "https://www.twitch.tv/R3crutaTV",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/483258be-365c-4151-b693-12a8eeea3577-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/xkevv",
+        "name": "THOMPSON",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/xkevv-thompson.jpg",
+        "streamers": [
+          {
+            "name": "XKEVV",
+            "url": "https://www.twitch.tv/xkevv",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/814f4c86-1ccb-42d9-b34b-d5dee7b48136-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/LEDOO",
+        "name": "MP5A4",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/ledoo-mp5a4.jpg",
+        "streamers": [
+          {
+            "name": "LEDOO",
+            "url": "https://www.twitch.tv/LEDOO",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/alexdieci",
+        "name": "ASSAULT RIFLE",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/alexdieci-ak47.jpg",
+        "streamers": [
+          {
+            "name": "ALEXDIECI",
+            "url": "https://www.twitch.tv/alexdieci",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/398e3fea-82e5-4f03-ab51-aca69613a160-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/s3kox",
+        "name": "GARAGE DOOR",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/s3kox-garage-door.jpg",
+        "streamers": [
+          {
+            "name": "S3KOX",
+            "url": "https://www.twitch.tv/s3kox",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/c83d0cee-d775-4603-b038-4e7a35f10e9e-profile_image-300x300.jpeg"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/toonyx",
+        "name": "HUNTING BOW",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/toonyx-bow.jpg",
+        "streamers": [
+          {
+            "name": "TOONYX",
+            "url": "https://www.twitch.tv/toonyx",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/a6eec28a-6408-43a8-a395-bb03067faa58-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/zbb__",
+        "name": "ROCKET LAUNCHER",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b3011b1/zbb-rocket-launcher.jpg",
+        "streamers": [
+          {
+            "name": "ZBB__",
+            "url": "https://www.twitch.tv/zbb__",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/a8df7189-537c-49d6-a804-84a162fd311a-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo"
+      }
+    ],
     "fail": 0,
     "hero": null
   },
