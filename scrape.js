@@ -17,17 +17,19 @@ async function scrape(url, file) {
     boxes.map(b => {
       const img = b.querySelector('video img')?.src ||
                   b.querySelector('video source')?.src?.replace('.mp4', '.jpg') || '';
+
       const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
         .map(a => ({ name: a.innerText.trim(), url: a.href }))
         .filter(s => s.name && s.url);
+
       return {
         id: b.getAttribute('href') || img,
-        name: b.querySelector('.drop-type')?.innerText || '',
+        name: b.querySelector('.drop-type')?.innerText || 'General',
         time: b.querySelector('.drop-time span')?.innerText || '',
         img,
-        streamers
+        streamers // vacío si general
       };
-    }).filter(d => d.id)
+    })
   );
 
   console.log(`✅ ${file.split('.')[0]}: ${drops.length} drops válidos detectados`);
@@ -36,7 +38,6 @@ async function scrape(url, file) {
   await browser.close();
 }
 
-// Ejecución principal
 (async () => {
   try {
     await scrape('https://twitch.facepunch.com/', 'twitch.json');
