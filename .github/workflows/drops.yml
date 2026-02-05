@@ -1,102 +1,283 @@
-const { chromium } = require('playwright');
-const fs = require('fs');
 
-(async () => {
-  const url = process.argv[2] || 'https://twitch.facepunch.com/';
-  const out = process.argv[3] || 'drops.json';
+name: Rust Drops Monitor
 
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 
-  const page = await browser.newPage({
-    viewport: { width: 1400, height: 900 }
-  });
+concurrency:
+  group: rust-drops-monitor
+  cancel-in-progress: true
 
-  try {
-    console.log("🌐 Abriendo página...");
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+jobs:
+  drops:
+    runs-on: ubuntu-latest
 
-    // Espera extra para scripts dinámicos
-    await page.waitForTimeout(5000);
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    console.log("🔎 Buscando drops...");
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-    // Scroll progresivo real (lazy loading)
-    await page.evaluate(async () => {
-      await new Promise(resolve => {
-        let total = 0;
-        const distance = 500;
-        const timer = setInterval(() => {
-          window.scrollBy(0, distance);
-          total += distance;
+      - name: Install Playwright
+        run: |
+          npm install playwright
+          npx playwright install chromium
 
-          if (total >= 6000) {
-            clearInterval(timer);
-            resolve();
+      - name: Init state.json
+        run: |
+          if [ ! -f state.json ]; then
+            echo '{"twitch":{"drops":[],"fail":0},"kick":{"drops":[],"fail":0}}' > state.json
+          fi
+
+      - name: Scrape Twitch & Kick
+        run: |
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          async function scrape(url, file, flag) {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            try {
+              await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+
+              const eventImg = await page.$eval('.hero-image img', el => el.src);
+
+              const drops = await page.$$eval('a.drop-box', boxes =>
+                boxes.map(b => {
+                  const img =
+                    b.querySelector('video img')?.src ||
+                    b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
+                    '';
+
+                  const streamers = [...b.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]')]
+                    .map(a => ({ name: a.innerText.trim(), url: a.href }))
+                    .filter(s => s.name && s.url);
+
+                  return {
+                    id: b.getAttribute('href') || img,
+                    name: b.querySelector('.drop-type')?.innerText || '',
+                    time: b.querySelector('.drop-time span')?.innerText || '',
+                    img,
+                    streamers
+                  };
+                }).filter(d => d.id)
+              );
+
+              fs.writeFileSync(file, JSON.stringify({ drops, eventImg }, null, 2));
+            } catch (e) {
+              console.error(`❌ Error en ${flag}`, e);
+              fs.appendFileSync(process.env.GITHUB_ENV, `${flag}=1\n`);
+              throw e;
+            } finally {
+              await browser.close();
+            }
           }
-        }, 200);
-      });
-    });
 
-    // Esperar si existen drops
-    try {
-      await page.waitForSelector('a.drop-box', { timeout: 15000 });
-    } catch {
-      console.log("⚠️ No se encontró selector drop-box");
-    }
+          (async () => {
+            try {
+              await scrape('https://twitch.facepunch.com/', 'twitch.json', 'FAIL_TWITCH');
+              await scrape('https://kick.facepunch.com/', 'kick.json', 'FAIL_KICK');
+            } catch (e) {
+              process.exit(1);
+            }
+          })();
+          JS
 
-    // Screenshot debug (clave en CI)
-    await page.screenshot({ path: 'debug.png', fullPage: true });
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOKS_DROPS: ${{ secrets.DISCORD_WEBHOOKS_DROPS }}
+        run: |
+          send_drops () {
+            PAYLOAD=$1
+            IFS=',' read -ra HOOKS <<< "$DISCORD_WEBHOOKS_DROPS"
+            for H in "${HOOKS[@]}"; do
+              curl -s -X POST -H "Content-Type: application/json" \
+                --data "$PAYLOAD" "$H" >/dev/null
+            done
+          }
 
-    const drops = await page.evaluate(() => {
-      const boxes = document.querySelectorAll('a.drop-box');
+          send_platform () {
+            PLATFORM=$1
+            FILE=$2
+            COLOR=$3
+            URL=$4
 
-      if (!boxes.length) {
-        console.log("No drop-box found in DOM");
-      }
+            PREV=$(jq -c ".${PLATFORM}.drops // []" state.json)
+            JSON_FILE=$(cat "$FILE")
+            CURR=$(jq -c '.drops' <<<"$JSON_FILE")
+            EVENT_IMG=$(jq -r '.eventImg' <<<"$JSON_FILE")
 
-      return [...boxes].map(box => {
-        const id =
-          box.querySelector('.drop-counter')?.dataset.itemid ||
-          box.dataset.itemid ||
-          null;
+            NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
+              [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
+            ')
+            [ "$PREV" = "[]" ] && NEW="$CURR"
 
-        const name =
-          box.querySelector('.drop-type')?.innerText.trim() ||
-          box.querySelector('h3')?.innerText.trim() ||
-          "Rust Drop";
+            COUNT=$(jq length <<<"$NEW")
+            COUNT=${COUNT:-0}
+            if [ "$COUNT" -eq 0 ]; then
+              echo "ℹ️ No hay nuevos drops en $PLATFORM"
+            else
+              EVENT_EMBED=$(jq -n \
+                --arg t "Drops ${PLATFORM^}" \
+                --arg u "$URL" \
+                --arg img "$EVENT_IMG" \
+                --argjson c "$COLOR" \
+                '{title:$t,url:$u,color:$c,image:{url:$img}}')
 
-        const time =
-          box.querySelector('.drop-time span')?.innerText.trim() ||
-          box.innerText.match(/\d+\s*(h|hour|min)/i)?.[0] ||
-          "Unknown";
+              send_drops "{\"embeds\":[$EVENT_EMBED]}"
 
-        const img =
-          box.querySelector('img')?.src ||
-          box.querySelector('video')?.poster ||
-          null;
+              TOTAL=$(jq length <<<"$NEW")
+              i=1
+              jq -c '.[]' <<<"$NEW" | while read DROP; do
+                RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
 
-        if (!id && !name) return null;
+                NAME=$(jq -n --arg n "$RAW_NAME" '
+                  ($n // "") |
+                  if test("Pickaxe";"i") then "Pico"
+                  elif test("Hatchet";"i") then "Hacha"
+                  elif test("Ice Pickaxe";"i") then "Pico de hielo"
+                  elif test("Salvaged Icepick";"i") then "Icepick recuperado"
+                  elif test("Jackhammer";"i") then "Martillo neumático"
+                  elif test("Hammer";"i") then "Martillo"
+                  elif test("Crossbow";"i") then "Ballesta"
+                  elif test("Bow";"i") then "Arco"
+                  elif test("Assault Rifle";"i") then "Rifle de asalto"
+                  elif test("Bolt Action Rifle";"i") then "Rifle de cerrojo"
+                  elif test("Semi-Automatic Rifle";"i") then "Rifle semiautomático"
+                  elif test("Custom SMG";"i") then "SMG personalizada"
+                  elif test("MP5";"i") then "MP5"
+                  elif test("Thompson";"i") then "Thompson"
+                  elif test("M249";"i") then "M249"
+                  elif test("Revolver";"i") then "Revólver"
+                  elif test("M92 Pistol";"i") then "Pistola M92"
+                  elif test("Pump Shotgun";"i") then "Escopeta de corredera"
+                  elif test("Double Barrel Shotgun";"i") then "Escopeta de doble cañón"
+                  elif test("Handmade Shell";"i") then "Escopeta artesanal"
+                  elif test("Rocket Launcher";"i") then "Lanzacohetes"
+                  elif test("Waterpipe Shotgun";"i") then "Escopeta de tubería"
+                  elif test("Grenade";"i") then "Granada"
+                  elif test("Beancan Grenade";"i") then "Granada Beancan"
+                  elif test("F1 Grenade";"i") then "Granada F1"
+                  elif test("Smoke Grenade";"i") then "Granada de humo"
+                  elif test("Sheet Metal Door";"i") then "Puerta de chapa"
+                  elif test("Armored Door";"i") then "Puerta blindada"
+                  elif test("Garage Door";"i") then "Puerta de garaje"
+                  elif test("Large Wood Box";"i") then "Caja de madera grande"
+                  elif test("Small Wood Box";"i") then "Caja de madera pequeña"
+                  elif test("Small Oil Refinery";"i") then "Pequeña refinería de petróleo"
+                  elif test("Large Oil Refinery";"i") then "Gran refinería de petróleo"
+                  elif test("Recycler";"i") then "Recicladora"
+                  elif test("Furnace";"i") then "Horno"
+                  elif test("Large Furnace";"i") then "Horno grande"
+                  elif test("Sleeping Bag";"i") then "Saco de dormir"
+                  elif test("Tool Cupboard";"i") then "Armario de herramientas"
+                  elif test("Roadsign Helmet";"i") then "Casco Roadsign"
+                  elif test("Coffee Can Helmet";"i") then "Casco lata de café"
+                  elif test("Metal Facemask";"i") then "Mascarilla metálica"
+                  elif test("Roadsign Jacket";"i") then "Chaqueta Roadsign"
+                  elif test("Roadsign Pants";"i") then "Pantalones Roadsign"
+                  elif test("Hoodie";"i") then "Sudadera"
+                  elif test("Pants";"i") then "Pantalones"
+                  elif test("Boots";"i") then "Botas"
+                  elif test("Gloves";"i") then "Guantes"
+                  elif test("Chest Plate";"i") then "Placa de pecho"
+                  elif test("Facemask";"i") then "Mascarilla"
+                  elif test("Bandana";"i") then "Bandana"
+                  elif test("Balaclava";"i") then "Pasamontañas"
+                  elif test("Beanie Hat";"i") then "Gorro"
+                  elif test("Hard Suit";"i") then "Traje duro"
+                  elif test("Hazmat Suit";"i") then "Traje hazmat"
+                  elif test("Wetsuit";"i") then "Traje de buceo"
+                  elif test("Backpack";"i") then "Mochila"
+                  elif test("Rock";"i") then "Roca"
+                  elif test("Roadsign Kilt";"i") then "Falda Roadsign"
+                  elif test("Cargo Pants";"i") then "Pantalones cargo"
+                  elif test("Jacket";"i") then "Chaqueta"
+                  elif test("Tactical Gloves";"i") then "Guantes tácticos"
+                  else $n end
+                ' --raw-output)
 
-        return { id, name, time, img };
-      }).filter(Boolean);
-    });
+                TIME=$(jq -r '.time // ""' <<<"$DROP" | tr -d '\n\r')
+                TIME=$(echo "$TIME" | perl -pe 's/\s*HOURS?/ Horas/i; s/Unknown/Desconocido/i')
 
-    fs.writeFileSync(out, JSON.stringify(drops, null, 2));
+                IMG=$(jq -r '.img // ""' <<<"$DROP")
+                [ -z "$IMG" ] && IMG="$EVENT_IMG"
 
-    console.log(`✅ Scrape completado: ${drops.length} drops encontrados.`);
-  }
-  catch (err) {
-    console.error("❌ ERROR:", err);
+                STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join("\n🎮 ")' <<<"$DROP")
 
-    // Screenshot en error
-    try {
-      await page.screenshot({ path: 'error.png', fullPage: true });
-    } catch {}
-  }
-  finally {
-    await browser.close();
-  }
-})();
+                if [ -z "$STREAMERS" ]; then
+                  TITLE="🌍 Drop General ${PLATFORM^} | $i/$TOTAL"
+                  URL_DROP=$(jq -r '.id' <<<"$DROP")
+                  DESC=$'🎁 '"$NAME"'\n⏱ '"$TIME"
+                else
+                  TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
+                  URL_DROP=$(jq -r '.streamers[0].url' <<<"$DROP")
+                  DESC=$'🎁 '"$NAME"'\n⏱ '"$TIME"'\n🎮 '"$STREAMERS"
+                fi
+
+                EMBED=$(jq -n \
+                  --arg t "$TITLE" \
+                  --arg d "$DESC" \
+                  --arg u "$URL_DROP" \
+                  --arg img "$IMG" \
+                  --argjson c "$COLOR" \
+                  '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
+
+                send_drops "{\"embeds\":[$EMBED]}"
+                i=$((i+1))
+              done
+            fi
+
+            jq --argjson ids "$CURR" ".${PLATFORM}.drops = \$ids | .${PLATFORM}.fail=0" state.json > tmp && mv tmp state.json
+          }
+
+          send_platform twitch twitch.json 9502720 https://twitch.facepunch.com/
+          send_platform kick kick.json 2003190 https://kick.facepunch.com/
+
+      - name: Notify Discord (Error)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_ERRORS: ${{ secrets.DISCORD_WEBHOOK_ERRORS }}
+        run: |
+          FAIL_TWITCH=${FAIL_TWITCH:-0}
+          FAIL_KICK=${FAIL_KICK:-0}
+
+          [ "$FAIL_TWITCH" = "0" ] && [ "$FAIL_KICK" = "0" ] && exit 0
+
+          FAIL=$(jq '.twitch.fail // 0' state.json)
+          FAIL=$((FAIL+1))
+
+          if [ "$FAIL" -eq 1 ] || [ $((FAIL % 4)) -eq 0 ]; then
+            PLAT=""
+            [ "$FAIL_TWITCH" = "1" ] && PLAT="$PLAT\n❌ Twitch"
+            [ "$FAIL_KICK" = "1" ] && PLAT="$PLAT\n❌ Kick"
+
+            ACTIONS_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+            MSG=$(jq -n \
+              --arg t "🚨 Error en Rust Drops Monitor" \
+              --arg d "Falló la obtención de drops en:$PLAT
+              
+              🔗 $ACTIONS_URL" \
+              '{embeds:[{title:$t,description:$d,color:16711680}]}' )
+
+            curl -s -X POST -H "Content-Type: application/json" \
+              --data "$MSG" "$DISCORD_WEBHOOK_ERRORS" >/dev/null
+          fi
+
+          jq ".twitch.fail=$FAIL | .kick.fail=$FAIL" state.json > tmp && mv tmp state.json
+
+      - name: Commit state.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git diff --quiet && exit 0
+          git add state.json
+          git commit -m "Update drops"
+          git push
