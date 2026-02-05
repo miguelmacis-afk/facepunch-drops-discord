@@ -15,19 +15,40 @@ const fs = require('fs');
   });
 
   try {
-    console.log("🌐 Abriendo página...");
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    console.log("🌐 Abriendo:", url);
 
-    // Espera extra para scripts dinámicos
+    await page.goto(url, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
+
+    // Espera extra para JS dinámico
     await page.waitForTimeout(5000);
 
-    console.log("🔎 Buscando drops...");
+    // --- HERO ROBUSTO (lo que pediste) ---
+    const hero = await page.evaluate(() => {
+      const selectors = [
+        '.hero-image img',
+        '.campaign-header img',
+        '.header-img img'
+      ];
 
-    // Scroll progresivo real (lazy loading)
+      for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el) return el.src;
+      }
+
+      return null;
+    });
+
+    console.log("🖼 Hero:", hero || "No encontrado");
+
+    // --- SCROLL para lazy load ---
     await page.evaluate(async () => {
       await new Promise(resolve => {
         let total = 0;
         const distance = 500;
+
         const timer = setInterval(() => {
           window.scrollBy(0, distance);
           total += distance;
@@ -40,22 +61,22 @@ const fs = require('fs');
       });
     });
 
-    // Esperar si existen drops
+    // Intentar esperar drops
     try {
       await page.waitForSelector('a.drop-box', { timeout: 15000 });
     } catch {
-      console.log("⚠️ No se encontró selector drop-box");
+      console.log("⚠️ drop-box no encontrado (puede no haber campaña activa)");
     }
 
-    // Screenshot debug (clave en CI)
-    await page.screenshot({ path: 'debug.png', fullPage: true });
+    // Screenshot debug útil en CI
+    await page.screenshot({
+      path: 'debug.png',
+      fullPage: true
+    });
 
+    // --- SCRAPING DROPS ---
     const drops = await page.evaluate(() => {
       const boxes = document.querySelectorAll('a.drop-box');
-
-      if (!boxes.length) {
-        console.log("No drop-box found in DOM");
-      }
 
       return [...boxes].map(box => {
         const id =
@@ -84,16 +105,24 @@ const fs = require('fs');
       }).filter(Boolean);
     });
 
-    fs.writeFileSync(out, JSON.stringify(drops, null, 2));
+    const result = {
+      hero,
+      count: drops.length,
+      drops
+    };
 
-    console.log(`✅ Scrape completado: ${drops.length} drops encontrados.`);
+    fs.writeFileSync(out, JSON.stringify(result, null, 2));
+
+    console.log(`✅ ${drops.length} drops encontrados`);
   }
   catch (err) {
     console.error("❌ ERROR:", err);
 
-    // Screenshot en error
     try {
-      await page.screenshot({ path: 'error.png', fullPage: true });
+      await page.screenshot({
+        path: 'error.png',
+        fullPage: true
+      });
     } catch {}
   }
   finally {
