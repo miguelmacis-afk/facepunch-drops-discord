@@ -5,52 +5,98 @@ const fs = require('fs');
   const url = process.argv[2] || 'https://twitch.facepunch.com/';
   const out = process.argv[3] || 'drops.json';
 
-  const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  const page = await browser.newPage({
+    viewport: { width: 1400, height: 900 }
+  });
 
   try {
-    // Usamos networkidle para esperar a que carguen las imágenes y scripts
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+    console.log("🌐 Abriendo página...");
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-    // --- ELIMINAMOS EL ERROR DEL HERO ---
-    // En lugar de $eval, usamos evaluate para que si no existe, devuelva null sin romper el script
-    const heroData = await page.evaluate(() => {
-      const img = document.querySelector('.hero-image img, .campaign-header img, .header-img');
-      return img ? img.src : null;
-    });
+    // Espera extra para scripts dinámicos
+    await page.waitForTimeout(5000);
 
-    await page.waitForSelector('a.drop-box', { timeout: 15000 });
+    console.log("🔎 Buscando drops...");
 
-    // Scroll para asegurar que los elementos lazy-load aparezcan
+    // Scroll progresivo real (lazy loading)
     await page.evaluate(async () => {
-      window.scrollBy(0, 1000);
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(resolve => {
+        let total = 0;
+        const distance = 500;
+        const timer = setInterval(() => {
+          window.scrollBy(0, distance);
+          total += distance;
+
+          if (total >= 6000) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 200);
+      });
     });
+
+    // Esperar si existen drops
+    try {
+      await page.waitForSelector('a.drop-box', { timeout: 15000 });
+    } catch {
+      console.log("⚠️ No se encontró selector drop-box");
+    }
+
+    // Screenshot debug (clave en CI)
+    await page.screenshot({ path: 'debug.png', fullPage: true });
 
     const drops = await page.evaluate(() => {
-      return [...document.querySelectorAll('a.drop-box')].map(box => {
-        const id = box.querySelector('.drop-counter')?.dataset.itemid;
-        if (!id) return null;
+      const boxes = document.querySelectorAll('a.drop-box');
 
-        // Facepunch a veces usa <img> y otras <video poster="...">
-        const imageElement = box.querySelector('img');
-        const videoElement = box.querySelector('video');
+      if (!boxes.length) {
+        console.log("No drop-box found in DOM");
+      }
 
-        return {
-          id: id,
-          name: box.querySelector('.drop-type')?.innerText.trim() ?? 'Rust Drop',
-          time: box.querySelector('.drop-time span')?.innerText.trim() ?? 'Unknown',
-          img: imageElement ? imageElement.src : (videoElement ? videoElement.poster : null)
-        };
-      }).filter(d => d !== null);
+      return [...boxes].map(box => {
+        const id =
+          box.querySelector('.drop-counter')?.dataset.itemid ||
+          box.dataset.itemid ||
+          null;
+
+        const name =
+          box.querySelector('.drop-type')?.innerText.trim() ||
+          box.querySelector('h3')?.innerText.trim() ||
+          "Rust Drop";
+
+        const time =
+          box.querySelector('.drop-time span')?.innerText.trim() ||
+          box.innerText.match(/\d+\s*(h|hour|min)/i)?.[0] ||
+          "Unknown";
+
+        const img =
+          box.querySelector('img')?.src ||
+          box.querySelector('video')?.poster ||
+          null;
+
+        if (!id && !name) return null;
+
+        return { id, name, time, img };
+      }).filter(Boolean);
     });
 
     fs.writeFileSync(out, JSON.stringify(drops, null, 2));
-    console.log(`✅ Scrape completado: ${drops.length} drops encontrados.`);
 
-  } catch (err) {
-    
-  } finally {
+    console.log(`✅ Scrape completado: ${drops.length} drops encontrados.`);
+  }
+  catch (err) {
+    console.error("❌ ERROR:", err);
+
+    // Screenshot en error
+    try {
+      await page.screenshot({ path: 'error.png', fullPage: true });
+    } catch {}
+  }
+  finally {
     await browser.close();
   }
 })();
