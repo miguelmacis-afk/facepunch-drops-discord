@@ -1,6 +1,21 @@
 {
   "twitch": {
-    "drops": [],
+    "drops": [
+      {
+        "id": "https://www.twitch.tv/TwitchRivals",
+        "name": "HMLMG",
+        "time": "30 MINUTES",
+        "img": "https://files.facepunch.com/lewis/1b0611b1/hmlmg.jpg",
+        "streamers": [
+          {
+            "name": "TWITCHRIVALS",
+            "url": "https://www.twitch.tv/TwitchRivals",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/393ba325-486c-40f9-ba97-eeba5b5746c6-profile_image-300x300.jpeg"
+          }
+        ],
+        "type": "Exclusivo"
+      }
+    ],
     "fail": 0,
     "hero": null
   },
