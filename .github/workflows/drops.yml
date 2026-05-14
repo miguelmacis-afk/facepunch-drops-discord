@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Playwright
+      - name: Install Dependencies
         run: |
           npm install playwright
           npx playwright install chromium
@@ -30,99 +30,46 @@ jobs:
       - name: Init state.json
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":{"drops":[],"fail":0},"kick":{"drops":[],"fail":0}}' > state.json
+            echo '{"twitch":{"drops":[]},"kick":{"drops":[]}}' > state.json
           fi
 
-      - name: Scrape Twitch & Kick
-        run: |
-          node <<'JS'
-          const fs = require('fs');
-          const { chromium } = require('playwright');
-
-          async function scrape(url, file) {
-            const browser = await chromium.launch({ headless: true });
-            const page = await browser.newPage();
-            console.log(`🌐 Scraping: ${url}`);
-            await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-
-            const eventImg = await page.$eval('.hero-image img', el => el.src).catch(() => '');
-            console.log(`🖼 Hero image: ${eventImg || 'No encontrado'}`);
-
-            const drops = await page.$$eval('div.drop-box', boxes =>
-              boxes.map(b => {
-                const img = b.querySelector('video source')?.src?.replace('.mp4', '.jpg') ||
-                            b.querySelector('video img')?.src || '';
-
-                const streamerLinks = [...b.querySelectorAll('a.streamer-info')]
-                  .map(a => {
-                    const name = a.querySelector('.streamer-name')?.innerText.trim() || '';
-                    const url = a.href || '';
-                    const avatar = a.querySelector('img')?.src || '';
-                    return { name, url, avatar };
-                  })
-                  .filter(s => s.name && s.url);
-
-                const type = streamerLinks.length > 0 ? 'Exclusivo' : 'General';
-                const name = b.querySelector('.drop-type')?.innerText || type;
-                const time = b.querySelector('.drop-time span')?.innerText || '';
-
-                return {
-                  id: b.querySelector('a.drop-box-body')?.href || img,
-                  name,
-                  time,
-                  img,
-                  streamers: streamerLinks,
-                  type
-                };
-              })
-            );
-
-            console.log(`✅ ${file.split('.')[0]}: ${drops.length} drops detectados`);
-            fs.writeFileSync(file, JSON.stringify({ drops, eventImg }, null, 2));
-            await browser.close();
-          }
-
-          (async () => {
-            try {
-              await scrape('https://twitch.facepunch.com/', 'twitch.json');
-              await scrape('https://kick.facepunch.com/', 'kick.json');
-            } catch (e) {
-              console.error(e);
-              process.exit(1);
-            }
-          })();
-          JS
+      - name: Run Scraper
+        run: node scrape.js
 
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          send_platform () {
-            PLATFORM=$1
-            FILE=$2
-            COLOR=$3
+          # Función para procesar y notificar
+          process_notifications () {
+            PLATFORM=$1 # 'twitch' (Exclusivos) o 'general' (Los que van a Kick)
+            COLOR=$2
+            DISPLAY_NAME=$3
 
+            # Leemos el estado anterior y el resultado actual del scraper
             PREV=$(jq -c ".${PLATFORM}.drops // []" state.json)
-            JSON_FILE=$(cat "$FILE")
-            CURR=$(jq -c '.drops' <<<"$JSON_FILE")
-            EVENT_IMG=$(jq -r '.eventImg' <<<"$JSON_FILE")
-
+            CURR=$(jq -c ".${PLATFORM}.drops" drops.json)
+            
+            # Buscamos nuevos drops comparando IDs
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
               [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
             ')
+
+            # Si el estado estaba vacío, tratamos todos como nuevos
             [ "$PREV" = "[]" ] && NEW="$CURR"
 
             COUNT=$(jq length <<<"$NEW")
-            COUNT=${COUNT:-0} 
-            if [ "$COUNT" -eq 0 ]; then
-              echo "ℹ️ No hay nuevos drops en $PLATFORM"
+            if [ "${COUNT:-0}" -eq 0 ]; then
+              echo "ℹ️ No hay nuevos drops para $DISPLAY_NAME"
             else
-              TOTAL=$(jq length <<<"$NEW")
+              TOTAL=$COUNT
               i=1
               jq -c '.[]' <<<"$NEW" | while read DROP; do
-                RAW_NAME=$(jq -r '.name // ""' <<<"$DROP")
+                # Traducción y limpieza de nombre
+                RAW_NAME=$(jq -r '.name' <<<"$DROP")
                 NAME=$(jq -n --arg n "$RAW_NAME" '
                   ($n // "") |
+                  if test("Large Wood Box";"i") then "Caja de madera grande"
                   if test("Pickaxe";"i") then "Pico"
                   elif test("Hatchet";"i") then "Hacha"
                   elif test("Ice Pickaxe";"i") then "Pico de hielo"
@@ -187,32 +134,26 @@ jobs:
                   else $n end
                 ' --raw-output)
 
-                TIME=$(jq -r '.time // ""' <<<"$DROP" | tr -d '\n\r')
-                TIME=$(echo "$TIME" | perl -pe 's/\s*HOURS?/ Horas/i; s/Unknown/Desconocido/i')
-
-                IMG=$(jq -r '.img // ""' <<<"$DROP")
-                [ -z "$IMG" ] && IMG="$EVENT_IMG"
-
-                STREAMERS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join("
-                🎮")' <<<"$DROP")
-
-                if [ -z "$STREAMERS" ]; then
-                  TITLE="🌍 Drop General ${PLATFORM^} | $i/$TOTAL"
-                  URL_DROP=$(jq -r '.id' <<<"$DROP")
-                  DESC=$'🎁 '"$NAME"'
-                  ⏱ '"$TIME"
+                TIME=$(jq -r '.time' <<<"$DROP")
+                IMG=$(jq -r '.img' <<<"$DROP")
+                URL=$(jq -r '.streamers[0].url // .id' <<<"$DROP")
+                
+                # Construir descripción de streamers si existen
+                HAS_STREAMERS=$(jq '.streamers | length' <<<"$DROP")
+                if [ "$HAS_STREAMERS" -gt 0 ]; then
+                  DESC="🎁 **$NAME**\n⏱ $TIME\n🎮 "
+                  STREAMER_LIST=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
+                  DESC="${DESC}${STREAMER_LIST}"
+                  TITLE="⭐ Drop Exclusivo | $i/$TOTAL"
                 else
-                  TITLE="⭐ Drop Exclusivo ${PLATFORM^} | $i/$TOTAL"
-                  URL_DROP=$(jq -r '.streamers[0].url' <<<"$DROP")
-                  DESC=$'🎁 '"$NAME"'
-                  ⏱ '"$TIME"'
-                  🎮 '"$STREAMERS"
+                  DESC="🎁 **$NAME**\n⏱ $TIME\n🌍 Disponible en todos los canales."
+                  TITLE="🌍 Drop General | $i/$TOTAL"
                 fi
 
                 EMBED=$(jq -n \
                   --arg t "$TITLE" \
                   --arg d "$DESC" \
-                  --arg u "$URL_DROP" \
+                  --arg u "$URL" \
                   --arg img "$IMG" \
                   --argjson c "$COLOR" \
                   '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
@@ -221,18 +162,18 @@ jobs:
                 i=$((i+1))
               done
             fi
-
-            jq --argjson ids "$CURR" ".${PLATFORM}.drops = \$ids | .${PLATFORM}.fail=0" state.json > tmp && mv tmp state.json
           }
 
-          send_platform twitch twitch.json 9502720
-          send_platform kick kick.json 2003190
+          # Procesamos Twitch (Exclusivos) y General (Que mapeas a Kick en tu lógica)
+          process_notifications "twitch" 9502720 "Twitch Exclusivos"
+          process_notifications "general" 2003190 "Generales"
+
+          # Actualizar state.json para la próxima ejecución
+          jq -s '.[0] * .[1]' state.json drops.json > tmp && mv tmp state.json
 
       - name: Commit state.json
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git diff --quiet && exit 0
           git add state.json
-          git commit -m "Update drops"
-          git push
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update drops state" && git push)
