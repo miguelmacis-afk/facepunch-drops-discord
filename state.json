@@ -1,2 +1,34 @@
 {
+  "twitch": {
+    "drops": [
+      {
+        "id": "https://www.twitch.tv/TwitchRivalsHMLMG",
+        "name": "HMLMG",
+        "time": "30 MINUTES",
+        "img": "https://files.facepunch.com/lewis/1b0611b1/hmlmg.jpg",
+        "url": "https://www.twitch.tv/TwitchRivals",
+        "availability": "ONLY AVAILABLE MAY 13TH 6PM UTC UNTIL 11PM UTC",
+        "type": "Exclusivo",
+        "streamers": [
+          {
+            "name": "TWITCHRIVALS",
+            "url": "https://www.twitch.tv/TwitchRivals",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/393ba325-486c-40f9-ba97-eeba5b5746c6-profile_image-300x300.jpeg"
+          }
+        ]
+      }
+    ],
+    "fail": 0,
+    "hero": "https://files.facepunch.com/lewis/1b0611b1/TR_50-website-header.png"
+  },
+  "kick": {
+    "drops": [],
+    "fail": 0,
+    "hero": null
+  },
+  "general": {
+    "drops": [],
+    "fail": 0,
+    "hero": null
+  }
 }
