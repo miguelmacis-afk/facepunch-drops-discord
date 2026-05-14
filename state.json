@@ -6,6 +6,7 @@
         "name": "HMLMG",
         "time": "30 MINUTES",
         "img": "https://files.facepunch.com/lewis/1b0611b1/hmlmg.jpg",
+        "url": "https://www.twitch.tv/TwitchRivals",
         "type": "Exclusivo",
         "streamers": [
           {
@@ -27,10 +28,11 @@
   "general": {
     "drops": [
       {
-        "id": "https://www.twitch.tv/directory/category/rustLARGE WOOD BOX",
+        "id": "https://www.twitch.tv/directory/category/rustLARGEWOODBOX",
         "name": "LARGE WOOD BOX",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/1b0611b1/large-box.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
         "type": "General",
         "streamers": []
       },
@@ -39,22 +41,25 @@
         "name": "BARBEQUE",
         "time": "2 HOURS",
         "img": "https://files.facepunch.com/lewis/1b0611b1/barbeque.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
         "type": "General",
         "streamers": []
       },
       {
-        "id": "https://www.twitch.tv/directory/category/rustSALVAGED AXE",
+        "id": "https://www.twitch.tv/directory/category/rustSALVAGEDAXE",
         "name": "SALVAGED AXE",
         "time": "3 HOURS",
         "img": "https://files.facepunch.com/lewis/1b0611b1/salvaged-axe.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
         "type": "General",
         "streamers": []
       },
       {
-        "id": "https://www.twitch.tv/directory/category/rustTACTICAL GLOVES",
+        "id": "https://www.twitch.tv/directory/category/rustTACTICALGLOVES",
         "name": "TACTICAL GLOVES",
         "time": "4 HOURS",
         "img": "https://files.facepunch.com/lewis/1b0611b1/tac-gloves.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
         "type": "General",
         "streamers": []
       },
@@ -63,9 +68,12 @@
         "name": "SKS",
         "time": "5 HOURS",
         "img": "https://files.facepunch.com/lewis/1b0611b1/sks.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
         "type": "General",
         "streamers": []
       }
-    ]
+    ],
+    "fail": 0,
+    "hero": null
   }
 }
