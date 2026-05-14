@@ -11,6 +11,7 @@ async function scrapeRustDrops() {
   const data = await page.evaluate(() => {
     const hero = document.querySelector('.hero-image img')?.src || null;
     const boxes = Array.from(document.querySelectorAll('.drop-box'));
+    console.table(boxes);
 
     const drops = boxes.map(box => {
       // 1. Detectar si es General o Streamer por la estructura interna
