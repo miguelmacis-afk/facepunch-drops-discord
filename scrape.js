@@ -1,16 +1,17 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
-// 1. Definición de selectores por sistema
 const SYSTEMS = {
   twitch: {
     url: 'https://twitch.facepunch.com/',
     container: '.drop-box',
-    streamerName: '.streamer-info span', // Donde aparece el nombre del streamer
+    // Twitch usa .streamer-name para exclusivos y .streamer-info para el bloque
+    streamerName: '.streamer-name, .streamer-info span', 
     itemName: '.drop-type',
     time: '.drop-time span',
     image: 'video img, img.drop-img, img',
-    platformLink: 'twitch.tv'
+    // Link general de la categoría para identificar drops generales
+    generalDir: '/directory/category/rust'
   },
   kick: {
     url: 'https://kick.facepunch.com/',
@@ -19,7 +20,7 @@ const SYSTEMS = {
     itemName: '.drop-type',
     time: '.drop-time span',
     image: 'video img, img.drop-img, img',
-    platformLink: 'kick.com'
+    generalDir: '/directory/category/rust'
   }
 };
 
@@ -29,78 +30,82 @@ async function scrapePlatform(systemKey) {
   const page = await browser.newPage();
 
   try {
-    console.log(`🌐 Iniciando scraping sistema: ${systemKey.toUpperCase()}`);
+    console.log(`🌐 Scraping ${systemKey.toUpperCase()}...`);
     await page.goto(config.url, { waitUntil: 'networkidle', timeout: 60000 });
     
-    // Esperar a que el contenedor principal esté presente
     await page.waitForSelector(config.container, { timeout: 10000 }).catch(() => null);
+
+    // Capturar Hero Image de la plataforma
+    const hero = await page.$eval('.hero-image img', img => img.src).catch(() => null);
 
     const drops = await page.$$eval(config.container, (boxes, cfg) => {
       return boxes.map(box => {
-        const streamerNameRaw = box.querySelector(cfg.streamerName)?.innerText.trim() || "";
+        // 1. Buscar el nombre del streamer (en varios posibles selectores)
+        const streamerName = box.querySelector(cfg.streamerName)?.innerText.trim() || "";
+        
+        // 2. Buscar el enlace (si el box no es <a>, buscamos el primer <a> interno)
+        const url = box.href || box.querySelector('a')?.href || "";
+        
         const name = box.querySelector(cfg.itemName)?.innerText.trim() || 'Unknown Drop';
         const time = box.querySelector(cfg.time)?.innerText.trim() || 'Unknown';
         const img = box.querySelector(cfg.image)?.src || "";
-        const url = box.href || "";
 
-        // Clasificación lógica por sistema
-        // Es general si no hay nombre de streamer o el link no contiene la plataforma específica
-        const isGeneral = streamerNameRaw === "" || !url.toLowerCase().includes(cfg.platformLink);
+        // LÓGICA DE CLASIFICACIÓN
+        // Es general si: no hay nombre de streamer O el link apunta al directorio general de Rust
+        const isGeneral = streamerName === "" || url.includes(cfg.generalDir);
 
         return {
-          id: url + name,
+          id: url + name, // ID único para evitar duplicados entre webs
           name,
           time,
           img,
           streamers: isGeneral ? [] : [{
-            name: streamerNameRaw,
+            name: streamerName,
             url: url,
-            avatar: ""
+            avatar: box.querySelector('.db-avatar img')?.src || ""
           }],
           type: isGeneral ? 'General' : 'Exclusivo'
         };
       });
     }, config);
 
-    return drops;
+    return { drops, hero };
   } catch (err) {
-    console.error(`❌ Error en sistema ${systemKey}:`, err.message);
-    return [];
+    console.error(`❌ Error en ${systemKey}:`, err.message);
+    return { drops: [], hero: null };
   } finally {
     await browser.close();
   }
 }
 
 (async () => {
-  // Ejecutamos ambos sistemas
-  const twitchResults = await scrapePlatform('twitch');
-  const kickResults = await scrapePlatform('kick');
+  const twitchData = await scrapePlatform('twitch');
+  const kickData = await scrapePlatform('kick');
 
-  // Consolidamos todos los datos detectados
-  const allData = [...twitchResults, ...kickResults];
+  // Mezclamos todos los drops de ambas fuentes
+  const allData = [...twitchData.drops, ...kickData.drops];
   
-  // Eliminamos duplicados reales (usando ID)
+  // Eliminamos duplicados (importante para los General Drops que se repiten)
   const uniqueDrops = Array.from(new Map(allData.map(d => [d.id, d])).values());
 
-  // Construimos el JSON final con tu estructura requerida
   const jsonResult = {
     twitch: {
       drops: uniqueDrops.filter(d => d.type === 'Exclusivo'),
       fail: 0,
-      hero: null
+      hero: twitchData.hero
     },
     kick: {
-      // Aquí agrupamos todos los generales de ambas plataformas
+      // Todos los generales se guardan aquí independientemente de donde vengan
       drops: uniqueDrops.filter(d => d.type === 'General'),
       fail: 0,
-      hero: null
+      hero: kickData.hero
     }
   };
 
   fs.writeFileSync('drops.json', JSON.stringify(jsonResult, null, 2));
 
   console.log(`✅ Proceso finalizado:`);
-  console.log(`   - [SISTEMA TWITCH] detectó ${twitchResults.length} elementos`);
-  console.log(`   - [SISTEMA KICK] detectó ${kickResults.length} elementos`);
-  console.log(`   - [TOTAL FINAL] ${jsonResult.twitch.drops.length} Exclusivos, ${jsonResult.kick.drops.length} Generales`);
+  console.log(`   - Exclusivos: ${jsonResult.twitch.drops.length}`);
+  console.log(`   - Generales: ${jsonResult.kick.drops.length}`);
+  if (jsonResult.twitch.hero) console.log(`   - Hero detectado: ${jsonResult.twitch.hero}`);
 })();
