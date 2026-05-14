@@ -68,7 +68,8 @@ jobs:
                 NAME=$(jq -n --arg n "$RAW_NAME" '
                   $n | 
                   if test("Pickaxe";"i") then "Pico"
-                  elif test("Hatchet";"i") then "Hacha"
+                  elif test("SALVAGED AXE";"i") then "Hacha Chatarra"
+                  elif test("BARBEQUE";"i") then "Barbacoa"
                   elif test("Ice Pickaxe";"i") then "Pico de hielo"
                   elif test("Salvaged Icepick";"i") then "Icepick recuperado"
                   elif test("Jackhammer";"i") then "Martillo neumático"
