@@ -30,7 +30,7 @@ jobs:
       - name: Init state.json
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":{"drops":[]},"kick":{"drops":[]}}' > state.json
+            echo '{"twitch":{"drops":[]},"general":{"drops":[]}}' > state.json
           fi
 
       - name: Run Scraper
@@ -40,35 +40,33 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          # Función para procesar y notificar
-          process_notifications () {
-            PLATFORM=$1 # 'twitch' (Exclusivos) o 'general' (Los que van a Kick)
+          # Función para procesar secciones
+          process_section () {
+            KEY=$1      # 'twitch' o 'general'
             COLOR=$2
-            DISPLAY_NAME=$3
-
-            # Leemos el estado anterior y el resultado actual del scraper
-            PREV=$(jq -c ".${PLATFORM}.drops // []" state.json)
-            CURR=$(jq -c ".${PLATFORM}.drops" drops.json)
             
-            # Buscamos nuevos drops comparando IDs
+            # Extraer drops del estado anterior y del actual
+            PREV=$(jq -c ".${KEY}.drops // []" state.json)
+            CURR=$(jq -c ".${KEY}.drops // []" drops.json)
+            
+            # Identificar nuevos comparando IDs únicos
             NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
-              [$curr[] | select(.id as $i | $prev | map(.id) | index($i) | not)]
+              $curr | map(select(.id as $id | $prev | map(.id) | index($id) | not))
             ')
 
-            # Si el estado estaba vacío, tratamos todos como nuevos
-            [ "$PREV" = "[]" ] && NEW="$CURR"
+            # Si el estado estaba vacío (primera vez), enviamos todo
+            if [ "$PREV" = "[]" ]; then NEW="$CURR"; fi
 
             COUNT=$(jq length <<<"$NEW")
-            if [ "${COUNT:-0}" -eq 0 ]; then
-              echo "ℹ️ No hay nuevos drops para $DISPLAY_NAME"
-            else
-              TOTAL=$COUNT
-              i=1
-              jq -c '.[]' <<<"$NEW" | while read DROP; do
-                # Traducción y limpieza de nombre
+            if [ "$COUNT" -gt 0 ]; then
+              echo "🚀 Enviando $COUNT nuevos drops de la categoría $KEY"
+              
+              jq -c '.[]' <<<"$NEW" | while read -r DROP; do
                 RAW_NAME=$(jq -r '.name' <<<"$DROP")
+                
+                # Traductor integrado en JQ
                 NAME=$(jq -n --arg n "$RAW_NAME" '
-                  ($n // "") |
+                  $n | 
                   if test("Pickaxe";"i") then "Pico"
                   elif test("Hatchet";"i") then "Hacha"
                   elif test("Ice Pickaxe";"i") then "Pico de hielo"
@@ -130,25 +128,27 @@ jobs:
                   elif test("Cargo Pants";"i") then "Pantalones cargo"
                   elif test("Jacket";"i") then "Chaqueta"
                   elif test("Tactical Gloves";"i") then "Guantes tácticos"
-                  else $n end
+                  else . end
                 ' --raw-output)
 
                 TIME=$(jq -r '.time' <<<"$DROP")
                 IMG=$(jq -r '.img' <<<"$DROP")
+                
+                # Para la URL: si hay streamer usa la del streamer, si no usa el ID (que es el link general)
                 URL=$(jq -r '.streamers[0].url // .id' <<<"$DROP")
                 
-                # Construir descripción de streamers si existen
-                HAS_STREAMERS=$(jq '.streamers | length' <<<"$DROP")
-                if [ "$HAS_STREAMERS" -gt 0 ]; then
-                  DESC="🎁 **$NAME**\n⏱ $TIME\n🎮 "
-                  STREAMER_LIST=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
-                  DESC="${DESC}${STREAMER_LIST}"
-                  TITLE="⭐ Drop Exclusivo | $i/$TOTAL"
+                # Lógica de descripción
+                ST_COUNT=$(jq '.streamers | length' <<<"$DROP")
+                if [ "$ST_COUNT" -gt 0 ]; then
+                  STR_LINKS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
+                  DESC="🎁 **$NAME**\n⏱ $TIME\n🎮 $STR_LINKS"
+                  TITLE="⭐ Drop Exclusivo"
                 else
-                  DESC="🎁 **$NAME**\n⏱ $TIME\n🌍 Disponible en todos los canales."
-                  TITLE="🌍 Drop General | $i/$TOTAL"
+                  DESC="🎁 **$NAME**\n⏱ $TIME\n🌍 Disponible en todos los canales con drops."
+                  TITLE="🌍 Drop General"
                 fi
 
+                # Crear Embed
                 EMBED=$(jq -n \
                   --arg t "$TITLE" \
                   --arg d "$DESC" \
@@ -157,22 +157,22 @@ jobs:
                   --argjson c "$COLOR" \
                   '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
 
-                curl -s -X POST -H "Content-Type: application/json" --data "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
-                i=$((i+1))
+                curl -s -X POST -H "Content-Type: application/json" -d "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
+                sleep 1 # Evitar rate limit de Discord
               done
             fi
           }
 
-          # Procesamos Twitch (Exclusivos) y General (Que mapeas a Kick en tu lógica)
-          process_notifications "twitch" 9502720 "Twitch Exclusivos"
-          process_notifications "general" 2003190 "Generales"
+          # Procesar ambas categorías según tu scrape.js
+          process_section "twitch" 9502720
+          process_section "general" 2003190
 
-          # Actualizar state.json para la próxima ejecución
-          jq -s '.[0] * .[1]' state.json drops.json > tmp && mv tmp state.json
+          # Actualizar el state.json conservando ambas categorías correctamente
+          jq -s '.[0] * .[1]' state.json drops.json > temp.json && mv temp.json state.json
 
       - name: Commit state.json
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add state.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update drops state" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update state: $(date +'%Y-%m-%d %H:%M')" && git push)
