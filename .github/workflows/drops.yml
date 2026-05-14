@@ -142,15 +142,15 @@ jobs:
                   PLATFORM_NAME=$(if [[ "$URL" == *"kick.com"* ]]; then echo "Kick"; else echo "Twitch"; fi)
                   TITLE="⭐ Drop Exclusivo ($PLATFORM_NAME)"
                   DESC="🎁 **$NAME**
-⏱ $TIME
-🎮 $STR_LINKS
-📺 Plataforma: $PLATFORM_NAME"
+                        ⏱ $TIME
+                        🎮 $STR_LINKS
+                        📺 Plataforma: $PLATFORM_NAME"
                 else
                   URL="https://www.twitch.tv/directory/category/rust"
                   TITLE="🌍 Drop General"
                   DESC="🎁 **$NAME**
-⏱ $TIME
-🌍 Disponible en todos los canales con drops."
+                        ⏱ $TIME
+                        🌍 Disponible en todos los canales con drops."
                 fi
 
                 # Crear Embed
