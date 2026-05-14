@@ -1,185 +1,186 @@
 name: Rust Drops Monitor
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 
 concurrency:
-  group: rust-drops-monitor
-  cancel-in-progress: true
+  group: rust-drops-monitor
+  cancel-in-progress: true
 
 jobs:
-  drops:
-    runs-on: ubuntu-latest
+  drops:
+    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Install Dependencies
-        run: |
-          npm install playwright
-          npx playwright install chromium
+      - name: Install Dependencies
+        run: |
+          npm install playwright
+          npx playwright install chromium
 
-      - name: Init state.json
-        run: |
-          if [ ! -f state.json ]; then
-            echo '{"twitch":{"drops":[]},"kick":{"drops":[]},"general":{"drops":[]}}' > state.json
-          fi
+      - name: Init state.json
+        run: |
+          if [ ! -f state.json ]; then
+            echo '{"twitch":{"drops":[]},"kick":{"drops":[]},"general":{"drops":[]}}' > state.json
+          fi
 
-      - name: Run Scraper
-        run: node scrape.js
+      - name: Run Scraper
+        run: node scrape.js
 
-      - name: Notify Discord
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: |
-          # Función para procesar secciones (Twitch, Kick o General)
-          process_section () {
-            KEY=$1      # 'twitch', 'kick' o 'general'
-            COLOR=$2
-            
-            # Extraer drops del estado anterior y del actual
-            PREV=$(jq -c ".${KEY}.drops // []" state.json)
-            CURR=$(jq -c ".${KEY}.drops // []" drops.json)
-            
-            # Identificar nuevos comparando IDs únicos
-            NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
-              $curr | map(select(.id as $id | $prev | map(.id) | index($id) | not))
-            ')
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          # Función para procesar secciones (Twitch, Kick o General)
+          process_section () {
+            KEY=$1      # 'twitch', 'kick' o 'general'
+            COLOR=$2
+            
+            # Extraer drops del estado anterior y del actual
+            PREV=$(jq -c ".${KEY}.drops // []" state.json)
+            CURR=$(jq -c ".${KEY}.drops // []" drops.json)
+            
+            # Identificar nuevos comparando IDs únicos
+            NEW=$(jq -c --argjson prev "$PREV" --argjson curr "$CURR" '
+              $curr | map(select(.id as $id | $prev | map(.id) | index($id) | not))
+            ')
 
-            # Si el estado estaba vacío (primera vez), enviamos todo
-            if [ "$PREV" = "[]" ]; then NEW="$CURR"; fi
+            # Si el estado estaba vacío (primera vez), enviamos todo
+            if [ "$PREV" = "[]" ]; then NEW="$CURR"; fi
 
-            COUNT=$(jq length <<<"$NEW")
-            if [ "$COUNT" -gt 0 ]; then
-              echo "🚀 Enviando $COUNT nuevos drops de la categoría $KEY"
-              
-              jq -c '.[]' <<<"$NEW" | while read -r DROP; do
-                RAW_NAME=$(jq -r '.name' <<<"$DROP")
-                
-                # Traductor integrado en JQ
-                NAME=$(jq -n --arg n "$RAW_NAME" '
-                  $n | 
-                  if test("Pickaxe";"i") then "Pico"
-                  elif test("SALVAGED AXE";"i") then "Hacha Chatarra"
-                  elif test("BARBEQUE";"i") then "Barbacoa"
-                  elif test("Ice Pickaxe";"i") then "Pico de hielo"
-                  elif test("Salvaged Icepick";"i") then "Icepick recuperado"
-                  elif test("Jackhammer";"i") then "Martillo neumático"
-                  elif test("Hammer";"i") then "Martillo"
-                  elif test("Crossbow";"i") then "Ballesta"
-                  elif test("Bow";"i") then "Arco"
-                  elif test("Assault Rifle";"i") then "Rifle de asalto"
-                  elif test("Bolt Action Rifle";"i") then "Rifle de cerrojo"
-                  elif test("Semi-Automatic Rifle";"i") then "Rifle semiautomático"
-                  elif test("Custom SMG";"i") then "SMG personalizada"
-                  elif test("MP5";"i") then "MP5"
-                  elif test("Thompson";"i") then "Thompson"
-                  elif test("M249";"i") then "M249"
-                  elif test("Revolver";"i") then "Revólver"
-                  elif test("M92 Pistol";"i") then "Pistola M92"
-                  elif test("Pump Shotgun";"i") then "Escopeta de corredera"
-                  elif test("Double Barrel Shotgun";"i") then "Escopeta de doble cañón"
-                  elif test("Handmade Shell";"i") then "Escopeta artesanal"
-                  elif test("Rocket Launcher";"i") then "Lanzacohetes"
-                  elif test("Waterpipe Shotgun";"i") then "Escopeta de tubería"
-                  elif test("Grenade";"i") then "Granada"
-                  elif test("Beancan Grenade";"i") then "Granada Beancan"
-                  elif test("F1 Grenade";"i") then "Granada F1"
-                  elif test("Smoke Grenade";"i") then "Granada de humo"
-                  elif test("Sheet Metal Door";"i") then "Puerta de chapa"
-                  elif test("Armored Door";"i") then "Puerta blindada"
-                  elif test("Garage Door";"i") then "Puerta de garaje"
-                  elif test("Large Wood Box";"i") then "Caja de madera grande"
-                  elif test("Small Wood Box";"i") then "Caja de madera pequeña"
-                  elif test("Small Oil Refinery";"i") then "Pequeña refinería de petróleo"
-                  elif test("Large Oil Refinery";"i") then "Gran refinería de petróleo"
-                  elif test("Recycler";"i") then "Recicladora"
-                  elif test("Furnace";"i") then "Horno"
-                  elif test("Large Furnace";"i") then "Horno grande"
-                  elif test("Sleeping Bag";"i") then "Saco de dormir"
-                  elif test("Tool Cupboard";"i") then "Armario de herramientas"
-                  elif test("Roadsign Helmet";"i") then "Casco Roadsign"
-                  elif test("Coffee Can Helmet";"i") then "Casco lata de café"
-                  elif test("Metal Facemask";"i") then "Mascarilla metálica"
-                  elif test("Roadsign Jacket";"i") then "Chaqueta Roadsign"
-                  elif test("Roadsign Pants";"i") then "Pantalones Roadsign"
-                  elif test("Hoodie";"i") then "Sudadera"
-                  elif test("Pants";"i") then "Pantalones"
-                  elif test("Boots";"i") then "Botas"
-                  elif test("Gloves";"i") then "Guantes"
-                  elif test("Chest Plate";"i") then "Placa de pecho"
-                  elif test("Facemask";"i") then "Mascarilla"
-                  elif test("Bandana";"i") then "Bandana"
-                  elif test("Balaclava";"i") then "Pasamontañas"
-                  elif test("Beanie Hat";"i") then "Gorro"
-                  elif test("Hard Suit";"i") then "Traje duro"
-                  elif test("Hazmat Suit";"i") then "Traje hazmat"
-                  elif test("Wetsuit";"i") then "Traje de buceo"
-                  elif test("Backpack";"i") then "Mochila"
-                  elif test("Rock";"i") then "Roca"
-                  elif test("Roadsign Kilt";"i") then "Falda Roadsign"
-                  elif test("Cargo Pants";"i") then "Pantalones cargo"
-                  elif test("Jacket";"i") then "Chaqueta"
-                  elif test("Tactical Gloves";"i") then "Guantes tácticos"
-                  else . end
-                ' --raw-output)
+            COUNT=$(jq length <<<"$NEW")
+            if [ "$COUNT" -gt 0 ]; then
+              echo "🚀 Enviando $COUNT nuevos drops de la categoría $KEY"
+              
+              jq -c '.[]' <<<"$NEW" | while read -r DROP; do
+                RAW_NAME=$(jq -r '.name' <<<"$DROP")
+                
+                # Traductor integrado en JQ
+                NAME=$(jq -n --arg n "$RAW_NAME" '
+                  $n | 
+                  if test("Pickaxe";"i") then "Pico"
+                  elif test("SALVAGED AXE";"i") then "Hacha Chatarra"
+                  elif test("BARBEQUE";"i") then "Barbacoa"
+                  elif test("Ice Pickaxe";"i") then "Pico de hielo"
+                  elif test("Salvaged Icepick";"i") then "Icepick recuperado"
+                  elif test("Jackhammer";"i") then "Martillo neumático"
+                  elif test("Hammer";"i") then "Martillo"
+                  elif test("Crossbow";"i") then "Ballesta"
+                  elif test("Bow";"i") then "Arco"
+                  elif test("Assault Rifle";"i") then "Rifle de asalto"
+                  elif test("Bolt Action Rifle";"i") then "Rifle de cerrojo"
+                  elif test("Semi-Automatic Rifle";"i") then "Rifle semiautomático"
+                  elif test("Custom SMG";"i") then "SMG personalizada"
+                  elif test("MP5";"i") then "MP5"
+                  elif test("Thompson";"i") then "Thompson"
+                  elif test("M249";"i") then "M249"
+                  elif test("Revolver";"i") then "Revólver"
+                  elif test("M92 Pistol";"i") then "Pistola M92"
+                  elif test("Pump Shotgun";"i") then "Escopeta de corredera"
+                  elif test("Double Barrel Shotgun";"i") then "Escopeta de doble cañón"
+                  elif test("Handmade Shell";"i") then "Escopeta artesanal"
+                  elif test("Rocket Launcher";"i") then "Lanzacohetes"
+                  elif test("Waterpipe Shotgun";"i") then "Escopeta de tubería"
+                  elif test("Grenade";"i") then "Granada"
+                  elif test("Beancan Grenade";"i") then "Granada Beancan"
+                  elif test("F1 Grenade";"i") then "Granada F1"
+                  elif test("Smoke Grenade";"i") then "Granada de humo"
+                  elif test("Sheet Metal Door";"i") then "Puerta de chapa"
+                  elif test("Armored Door";"i") then "Puerta blindada"
+                  elif test("Garage Door";"i") then "Puerta de garaje"
+                  elif test("Large Wood Box";"i") then "Caja de madera grande"
+                  elif test("Small Wood Box";"i") then "Caja de madera pequeña"
+                  elif test("Small Oil Refinery";"i") then "Pequeña refinería de petróleo"
+                  elif test("Large Oil Refinery";"i") then "Gran refinería de petróleo"
+                  elif test("Recycler";"i") then "Recicladora"
+                  elif test("Furnace";"i") then "Horno"
+                  elif test("Large Furnace";"i") then "Horno grande"
+                  elif test("Sleeping Bag";"i") then "Saco de dormir"
+                  elif test("Tool Cupboard";"i") then "Armario de herramientas"
+                  elif test("Roadsign Helmet";"i") then "Casco Roadsign"
+                  elif test("Coffee Can Helmet";"i") then "Casco lata de café"
+                  elif test("Metal Facemask";"i") then "Mascarilla metálica"
+                  elif test("Roadsign Jacket";"i") then "Chaqueta Roadsign"
+                  elif test("Roadsign Pants";"i") then "Pantalones Roadsign"
+                  elif test("Hoodie";"i") then "Sudadera"
+                  elif test("Pants";"i") then "Pantalones"
+                  elif test("Boots";"i") then "Botas"
+                  elif test("Gloves";"i") then "Guantes"
+                  elif test("Chest Plate";"i") then "Placa de pecho"
+                  elif test("Facemask";"i") then "Mascarilla"
+                  elif test("Bandana";"i") then "Bandana"
+                  elif test("Balaclava";"i") then "Pasamontañas"
+                  elif test("Beanie Hat";"i") then "Gorro"
+                  elif test("Hard Suit";"i") then "Traje duro"
+                  elif test("Hazmat Suit";"i") then "Traje hazmat"
+                  elif test("Wetsuit";"i") then "Traje de buceo"
+                  elif test("Backpack";"i") then "Mochila"
+                  elif test("Rock";"i") then "Roca"
+                  elif test("Roadsign Kilt";"i") then "Falda Roadsign"
+                  elif test("Cargo Pants";"i") then "Pantalones cargo"
+                  elif test("Jacket";"i") then "Chaqueta"
+                  elif test("Tactical Gloves";"i") then "Guantes tácticos"
+                  else . end
+                ' --raw-output)
 
-                TIME=$(jq -r '.time' <<<"$DROP")
-                IMG=$(jq -r '.img' <<<"$DROP")
-                ST_COUNT=$(jq '.streamers | length' <<<"$DROP")
-                
-                # Logica de URL y Descripcion (con saltos de linea reales)
-                if [ "$ST_COUNT" -gt 0 ]; then
-                  URL=$(jq -r '.streamers[0].url' <<<"$DROP")
-                  STR_LINKS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
-                  PLATFORM_NAME=$(if [[ "$URL" == *"kick.com"* ]]; then echo "Kick"; else echo "Twitch"; fi)
-                  TITLE="⭐ Drop Exclusivo ($PLATFORM_NAME)"
-                  DESC="🎁 **$NAME**
-                        ⏱ $TIME
-                        🎮 $STR_LINKS
-                        📺 Plataforma: $PLATFORM_NAME"
-                else
-                  URL="https://www.twitch.tv/directory/category/rust"
-                  TITLE="🌍 Drop General"
-                  DESC="🎁 **$NAME**
-                        ⏱ $TIME
-                        🌍 Disponible en todos los canales con drops."
-                fi
+                TIME=$(jq -r '.time' <<<"$DROP")
+                IMG=$(jq -r '.img' <<<"$DROP")
+                AVAIL=$(jq -r '.availability // empty' <<<"$DROP")
+                ST_COUNT=$(jq '.streamers | length' <<<"$DROP")
+                
+                # Lógica de URL y Descripción
+                if [ "$ST_COUNT" -gt 0 ]; then
+                  URL=$(jq -r '.streamers[0].url' <<<"$DROP")
+                  STR_LINKS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
+                  PLATFORM_NAME=$(if [[ "$URL" == *"kick.com"* ]]; then echo "Kick"; else echo "Twitch"; fi)
+                  TITLE="⭐ Drop Exclusivo ($PLATFORM_NAME)"
+                  
+                  DESC="🎁 **$NAME**"
+                  [ ! -z "$AVAIL" ] && DESC="$DESC\n⚠️ **$AVAIL**"
+                  DESC="$DESC\n⏱ $TIME\n🎮 $STR_LINKS\n📺 Plataforma: $PLATFORM_NAME"
+                else
+                  URL="https://www.twitch.tv/directory/category/rust"
+                  TITLE="🌍 Drop General"
+                  DESC="🎁 **$NAME**"
+                  [ ! -z "$AVAIL" ] && DESC="$DESC\n⚠️ **$AVAIL**"
+                  DESC="$DESC\n⏱ $TIME\n🌍 Disponible en todos los canales con drops."
+                fi
 
-                # Crear Embed
-                EMBED=$(jq -n \
-                  --arg t "$TITLE" \
-                  --arg d "$DESC" \
-                  --arg u "$URL" \
-                  --arg img "$IMG" \
-                  --argjson c "$COLOR" \
-                  '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
+                # Crear Embed
+                EMBED=$(jq -n \
+                  --arg t "$TITLE" \
+                  --arg d "$(echo -e "$DESC")" \
+                  --arg u "$URL" \
+                  --arg img "$IMG" \
+                  --argjson c "$COLOR" \
+                  '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
 
-                curl -s -X POST -H "Content-Type: application/json" -d "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
-                sleep 1 
-              done
-            fi
-          }
+                curl -s -X POST -H "Content-Type: application/json" -d "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
+                sleep 1 
+              done
+            fi
+          }
 
-          # Procesar las tres categorías
-          process_section "twitch" 9502720
-          process_section "kick" 3066993
-          process_section "general" 2003190
+          # Procesar las tres categorías
+          process_section "twitch" 9502720
+          process_section "kick" 3066993
+          process_section "general" 2003190
 
-          # Sincronizar drops.json con el estado persistente
-          jq -s '.[0] * .[1]' state.json drops.json > temp.json && mv temp.json state.json
+          # Sincronizar drops.json con el estado persistente
+          jq -s '.[0] * .[1]' state.json drops.json > temp.json && mv temp.json state.json
 
-      - name: Commit state.json
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add state.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update state: $(date +'%Y-%m-%d %H:%M')" && git push)
+      - name: Commit state.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add state.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update state: $(date +'%Y-%m-%d %H:%M')" && git push)
