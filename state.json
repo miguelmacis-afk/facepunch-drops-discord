@@ -7,7 +7,6 @@
         "time": "30 MINUTES",
         "img": "https://files.facepunch.com/lewis/1b0611b1/hmlmg.jpg",
         "url": "https://www.twitch.tv/TwitchRivals",
-        "availability": "ONLY AVAILABLE MAY 13TH 6PM UTC UNTIL 11PM UTC",
         "type": "Exclusivo",
         "streamers": [
           {
@@ -27,7 +26,53 @@
     "hero": null
   },
   "general": {
-    "drops": [],
+    "drops": [
+      {
+        "id": "https://www.twitch.tv/directory/category/rustLARGEWOODBOX",
+        "name": "LARGE WOOD BOX",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/1b0611b1/large-box.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
+        "type": "General",
+        "streamers": []
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rustBARBEQUE",
+        "name": "BARBEQUE",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b0611b1/barbeque.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
+        "type": "General",
+        "streamers": []
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rustSALVAGEDAXE",
+        "name": "SALVAGED AXE",
+        "time": "3 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b0611b1/salvaged-axe.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
+        "type": "General",
+        "streamers": []
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rustTACTICALGLOVES",
+        "name": "TACTICAL GLOVES",
+        "time": "4 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b0611b1/tac-gloves.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
+        "type": "General",
+        "streamers": []
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rustSKS",
+        "name": "SKS",
+        "time": "5 HOURS",
+        "img": "https://files.facepunch.com/lewis/1b0611b1/sks.jpg",
+        "url": "https://www.twitch.tv/directory/category/rust",
+        "type": "General",
+        "streamers": []
+      }
+    ],
     "fail": 0,
     "hero": null
   }
