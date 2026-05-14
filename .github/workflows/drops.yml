@@ -30,7 +30,7 @@ jobs:
       - name: Init state.json
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":{"drops":[]},"general":{"drops":[]}}' > state.json
+            echo '{"twitch":{"drops":[]},"kick":{"drops":[]},"general":{"drops":[]}}' > state.json
           fi
 
       - name: Run Scraper
@@ -40,9 +40,9 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          # Función para procesar secciones
+          # Función para procesar secciones (Twitch, Kick o General)
           process_section () {
-            KEY=$1      # 'twitch' o 'general'
+            KEY=$1      # 'twitch', 'kick' o 'general'
             COLOR=$2
             
             # Extraer drops del estado anterior y del actual
@@ -141,8 +141,9 @@ jobs:
                 ST_COUNT=$(jq '.streamers | length' <<<"$DROP")
                 if [ "$ST_COUNT" -gt 0 ]; then
                   STR_LINKS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
-                  DESC="🎁 **$NAME**\n⏱ $TIME\n🎮 $STR_LINKS"
-                  TITLE="⭐ Drop Exclusivo"
+                  PLATFORM_NAME=$(if [[ "$URL" == *"kick.com"* ]]; then echo "Kick"; else echo "Twitch"; fi)
+                  DESC="🎁 **$NAME**\n⏱ $TIME\n🎮 $STR_LINKS\n📺 Plataforma: $PLATFORM_NAME"
+                  TITLE="⭐ Drop Exclusivo ($PLATFORM_NAME)"
                 else
                   DESC="🎁 **$NAME**\n⏱ $TIME\n🌍 Disponible en todos los canales con drops."
                   TITLE="🌍 Drop General"
@@ -163,11 +164,12 @@ jobs:
             fi
           }
 
-          # Procesar ambas categorías según tu scrape.js
+          # Procesar las tres categorías generadas por scrape.js
           process_section "twitch" 9502720
+          process_section "kick" 3066993
           process_section "general" 2003190
 
-          # Actualizar el state.json conservando ambas categorías correctamente
+          # Sincronizar drops.json con el estado persistente
           jq -s '.[0] * .[1]' state.json drops.json > temp.json && mv temp.json state.json
 
       - name: Commit state.json
