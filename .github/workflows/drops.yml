@@ -133,20 +133,24 @@ jobs:
 
                 TIME=$(jq -r '.time' <<<"$DROP")
                 IMG=$(jq -r '.img' <<<"$DROP")
-                
-                # Para la URL: si hay streamer usa la del streamer, si no usa el ID (que es el link general)
-                URL=$(jq -r '.streamers[0].url // .id' <<<"$DROP")
-                
-                # Lógica de descripción
                 ST_COUNT=$(jq '.streamers | length' <<<"$DROP")
+                
+                # Logica de URL y Descripcion (con saltos de linea reales)
                 if [ "$ST_COUNT" -gt 0 ]; then
+                  URL=$(jq -r '.streamers[0].url' <<<"$DROP")
                   STR_LINKS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
                   PLATFORM_NAME=$(if [[ "$URL" == *"kick.com"* ]]; then echo "Kick"; else echo "Twitch"; fi)
-                  DESC="🎁 **$NAME**\n⏱ $TIME\n🎮 $STR_LINKS\n📺 Plataforma: $PLATFORM_NAME"
                   TITLE="⭐ Drop Exclusivo ($PLATFORM_NAME)"
+                  DESC="🎁 **$NAME**
+⏱ $TIME
+🎮 $STR_LINKS
+📺 Plataforma: $PLATFORM_NAME"
                 else
-                  DESC="🎁 **$NAME**\n⏱ $TIME\n🌍 Disponible en todos los canales con drops."
+                  URL="https://www.twitch.tv/directory/category/rust"
                   TITLE="🌍 Drop General"
+                  DESC="🎁 **$NAME**
+⏱ $TIME
+🌍 Disponible en todos los canales con drops."
                 fi
 
                 # Crear Embed
@@ -159,12 +163,12 @@ jobs:
                   '{title:$t,url:$u,description:$d,color:$c,thumbnail:{url:$img}}')
 
                 curl -s -X POST -H "Content-Type: application/json" -d "{\"embeds\":[$EMBED]}" "$DISCORD_WEBHOOK"
-                sleep 1 # Evitar rate limit de Discord
+                sleep 1 
               done
             fi
           }
 
-          # Procesar las tres categorías generadas por scrape.js
+          # Procesar las tres categorías
           process_section "twitch" 9502720
           process_section "kick" 3066993
           process_section "general" 2003190
