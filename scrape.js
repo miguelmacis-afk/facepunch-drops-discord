@@ -9,46 +9,41 @@ async function scrape(url) {
     console.log(`🌐 Scraping: ${url}`);
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
 
-    // 1. Esperar a que el contenedor de drops sea visible
-    await page.waitForSelector('.drops-group, .drop-box', { timeout: 20000 });
+    // Esperar a que cargue el contenedor principal
+    await page.waitForSelector('.drop-box');
 
-    // 2. Usamos un selector más genérico para capturar tanto <a> como <div> que sean boxes
     const drops = await page.$$eval('.drop-box', (boxes) => {
       return boxes.map(box => {
-        // Obtenemos el texto del nombre del drop/streamer
-        const dropNameRaw = box.querySelector('.streamer-info span')?.innerText.trim() || 
-                           box.querySelector('.drop-type')?.innerText.trim() || '';
+        // 1. Extraer nombre del streamer (si existe)
+        const streamerName = box.querySelector('.streamer-info')?.innerText.trim() || "";
         
+        // 2. Extraer nombre del objeto (ej: "Large Wood Box")
         const name = box.querySelector('.drop-type')?.innerText.trim() || 'Unknown Drop';
+        
+        // 3. Extraer tiempo (ej: "1 Hour")
         const time = box.querySelector('.drop-time span')?.innerText.trim() || 'Unknown';
         
-        // Imagen: Intentar varias rutas comunes en Facepunch
-        const img = box.querySelector('img.drop-img')?.src || 
-                    box.querySelector('video img')?.src || 
-                    box.querySelector('img')?.src || '';
+        // 4. Extraer imagen (priorizando el poster del video)
+        const img = box.querySelector('video img')?.src || 
+                    box.querySelector('img')?.src || "";
         
-        const id = box.href || img || name;
+        const urlLink = box.href || "";
 
-        // DETECCIÓN DE TIPO:
-        // Es general si: el texto lo dice, tiene la clase 'is-general' o no tiene links de Twitch/Kick
-        const hasStreamerLinks = box.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]').length > 0;
-        const isGeneral = dropNameRaw.toLowerCase().includes('general') || 
-                          box.classList.contains('is-general') || 
-                          !hasStreamerLinks;
+        // LÓGICA DE DETECCIÓN:
+        // Es general si el nombre del streamer está vacío o el link es el directorio general de Rust
+        const isGeneral = streamerName === "" || urlLink.includes('/directory/category/rust');
 
         const streamers = [];
         if (!isGeneral) {
-          box.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]').forEach(a => {
-            streamers.push({
-              name: a.innerText.trim() || dropNameRaw || 'Streamer',
-              url: a.href,
-              avatar: a.querySelector('img')?.src || ''
-            });
+          streamers.push({
+            name: streamerName,
+            url: urlLink,
+            avatar: "" // El avatar suele estar en otro lugar, pero aquí lo dejamos limpio
           });
         }
 
         return {
-          id,
+          id: urlLink + name, // ID compuesto para evitar duplicados
           name,
           time,
           img,
@@ -71,11 +66,9 @@ async function scrape(url) {
   const twitchData = await scrape('https://twitch.facepunch.com/');
   const kickData = await scrape('https://kick.facepunch.com/');
 
-  // Combinamos ambos resultados para procesarlos
-  const allScrapedDrops = [...twitchData, ...kickData];
-
-  // Eliminamos duplicados por ID (por si un drop general aparece en ambas webs)
-  const uniqueDrops = Array.from(new Map(allScrapedDrops.map(d => [d.id, d])).values());
+  // Combinar y limpiar duplicados
+  const allDrops = [...twitchData, ...kickData];
+  const uniqueDrops = Array.from(new Map(allDrops.map(d => [d.id, d])).values());
 
   const jsonResult = {
     twitch: {
@@ -84,7 +77,7 @@ async function scrape(url) {
       hero: null
     },
     kick: {
-      // Aquí movemos todos los Generales, independientemente de dónde vengan
+      // Guardamos aquí los generales (siguiendo tu estructura)
       drops: uniqueDrops.filter(d => d.type === 'General'),
       fail: 0,
       hero: null
@@ -93,7 +86,7 @@ async function scrape(url) {
 
   fs.writeFileSync('drops.json', JSON.stringify(jsonResult, null, 2));
   
-  console.log(`✅ Scraping finalizado:`);
-  console.log(`   - Exclusivos: ${jsonResult.twitch.drops.length}`);
-  console.log(`   - Generales: ${jsonResult.kick.drops.length}`);
+  console.log(`✅ Scraping completado:`);
+  console.log(`   - Exclusivos detectados: ${jsonResult.twitch.drops.length}`);
+  console.log(`   - Generales detectados: ${jsonResult.kick.drops.length}`);
 })();
