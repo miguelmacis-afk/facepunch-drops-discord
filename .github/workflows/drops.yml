@@ -69,7 +69,6 @@ jobs:
                 RAW_NAME=$(jq -r '.name' <<<"$DROP")
                 NAME=$(jq -n --arg n "$RAW_NAME" '
                   ($n // "") |
-                  if test("Large Wood Box";"i") then "Caja de madera grande"
                   if test("Pickaxe";"i") then "Pico"
                   elif test("Hatchet";"i") then "Hacha"
                   elif test("Ice Pickaxe";"i") then "Pico de hielo"
