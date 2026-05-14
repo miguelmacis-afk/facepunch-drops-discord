@@ -17,7 +17,7 @@ async function scrape(url) {
       return boxes.map(box => {
         // Obtenemos el texto del nombre del drop/streamer
         const dropNameRaw = box.querySelector('.streamer-info span')?.innerText.trim() || 
-                           box.querySelector('.drop-name')?.innerText.trim() || '';
+                           box.querySelector('.drop-type')?.innerText.trim() || '';
         
         const name = box.querySelector('.drop-type')?.innerText.trim() || 'Unknown Drop';
         const time = box.querySelector('.drop-time span')?.innerText.trim() || 'Unknown';
