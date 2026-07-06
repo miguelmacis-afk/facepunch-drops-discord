@@ -1,75 +1,75 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
-async function scrapeRustDrops() {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-  
-  await page.goto('https://twitch.facepunch.com/'); 
+async function scrape(url) {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
 
-  const data = await page.evaluate(() => {
-    const hero = document.querySelector('.hero-image img')?.src || null;
-    const boxes = Array.from(document.querySelectorAll('.drop-box'));
+  try {
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-    const drops = boxes.map(box => {
-      const streamerElem = box.querySelector('.streamer-name');
-      const isGeneral = !streamerElem;
-      
-      // Extraer URL
-      const url = isGeneral ? box.href : box.querySelector('.streamer-info')?.href;
-      const img = box.querySelector('video img')?.src || box.querySelector('img:not(.db-avatar img)')?.src;
-      const name = box.querySelector('.drop-type')?.innerText.trim();
-      const time = box.querySelector('.drop-time span')?.innerText.trim();
+    const drops = await page.$$eval('a.drop-box', boxes =>
+      boxes.map(box => {
+        const dropNameRaw = box.querySelector('.streamer-info span')?.innerText.trim() || '';
+        const name = box.querySelector('.drop-type')?.innerText.trim() || 'Unknown Drop';
+        const time = box.querySelector('.drop-time span')?.innerText.trim() || 'Unknown';
+        const img = box.querySelector('video img')?.src
+          || box.querySelector('video source')?.src?.replace('.mp4', '.jpg') || '';
+        const id = box.href || img || name;
 
-      return {
-        id: (url + name).replace(/\s+/g, ''),
-        name,
-        time,
-        img,
-        url: url, // Guardamos la URL para filtrar después
-        type: isGeneral ? 'General' : 'Exclusivo',
-        streamers: isGeneral ? [] : [{
-          name: streamerElem.innerText.trim(),
-          url: url,
-          avatar: box.querySelector('.db-avatar img')?.src || ""
-        }]
-      };
-    });
+        // Detectamos generales si el texto dice "- General Drop" o no hay links a streamers
+        const isGeneral = dropNameRaw.includes(' - General Drop');
 
-    return { drops, hero };
-  });
+        // Streamers: Twitch o Kick
+        const streamers = [];
+        box.querySelectorAll('a[href*="twitch.tv"], a[href*="kick.com"]').forEach(a => {
+          const streamerNameRaw = a.innerText.trim();
+          // Ignorar si es general
+          if (!isGeneral) {
+            streamers.push({
+              name: streamerNameRaw || 'Streamer',
+              url: a.href,
+              avatar: a.querySelector('img')?.src || ''
+            });
+          }
+        });
 
-  // --- LÓGICA DE FILTRADO CORREGIDA ---
-  const result = {
-    twitch: {
-      // Solo si la URL incluye twitch o es un Drop Exclusivo de Twitch
-      drops: data.drops.filter(d => d.url.includes('twitch.tv') && d.type === 'Exclusivo'),
-      fail: 0,
-      hero: data.hero
-    },
-    kick: {
-      // Solo si la URL incluye kick.com
-      drops: data.drops.filter(d => d.url.includes('kick.com')),
-      fail: 0,
-      hero: null
-    },
-    general: {
-      // Drops generales (suelen ser de Twitch pero se marcan aparte para el monitor)
-      drops: data.drops.filter(d => d.type === 'General'),
-      fail: 0,
-      hero: null
-    }
-  };
+        // Tipo: General si es general, exclusivo si hay streamers
+        const type = isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo';
 
-  fs.writeFileSync('drops.json', JSON.stringify(result, null, 2));
-  await browser.close();
-  
-  return result;
+        return { id, name, time, img, streamers, type };
+      })
+    );
+
+    return drops;
+
+  } catch (err) {
+    console.error(`❌ Error scraping ${url}:`, err);
+    return [];
+  } finally {
+    await browser.close();
+  }
 }
 
-scrapeRustDrops().then(res => {
-  console.log(`✅ Scraping completado.`);
-  console.log(`- Twitch detectados: ${res.twitch.drops.length}`);
-  console.log(`- Kick detectados: ${res.kick.drops.length}`);
-  console.log(`- Generales detectados: ${res.general.drops.length}`);
-});
+// Ejecutar scraping completo
+(async () => {
+  const twitchDrops = await scrape('https://twitch.facepunch.com/');
+  const kickDrops = await scrape('https://kick.facepunch.com/');
+
+  // Separar exclusivos y generales
+  const jsonResult = {
+    twitch: {
+      drops: twitchDrops.filter(d => d.type === 'Exclusivo'),
+      fail: 0,
+      hero: null
+    },
+    kick: {
+      drops: [...twitchDrops, ...kickDrops].filter(d => d.type === 'General'),
+      fail: 0,
+      hero: null
+    }
+  };
+
+  fs.writeFileSync('drops.json', JSON.stringify(jsonResult, null, 2));
+  console.log(`✅ Scraping completado: ${jsonResult.twitch.drops.length} exclusivos, ${jsonResult.kick.drops.length} generales`);
+})();
