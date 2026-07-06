@@ -2,7 +2,7 @@
   "twitch": {
     "drops": [],
     "fail": 0,
-    "hero": "https://files.facepunch.com/lewis/1b0611b1/TR_50-website-header.png"
+    "hero": null
   },
   "kick": {
     "drops": [],
