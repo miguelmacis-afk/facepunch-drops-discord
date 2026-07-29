@@ -5,7 +5,40 @@
     "hero": null
   },
   "kick": {
-    "drops": [],
+    "drops": [
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "VENDING MACHINE",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/July/vending-machine.jpg",
+        "streamers": [],
+        "type": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "SHEET METAL DOOR",
+        "time": "4 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/July/sheet-metal-door.jpg",
+        "streamers": [],
+        "type": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "LOCKER",
+        "time": "6 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/July/locker.jpg",
+        "streamers": [],
+        "type": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "AUTO TURRENT",
+        "time": "8 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/July/auto-turret.jpg",
+        "streamers": [],
+        "type": "General"
+      }
+    ],
     "fail": 0,
     "hero": null
   },
