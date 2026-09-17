@@ -5,7 +5,56 @@
     "hero": null
   },
   "kick": {
-    "drops": [],
+    "drops": [
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "LARGE WOOD BOX",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/box2.jpg",
+        "streamers": [],
+        "type": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "AUTO TURRET",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/September/auto-turret.jpg",
+        "streamers": [],
+        "type": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "SMALL BOX",
+        "time": "3 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/September/small-box.jpg",
+        "streamers": [],
+        "type": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "PANTS",
+        "time": "4 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/September/pants.jpg",
+        "streamers": [],
+        "type": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "WORK BOOTS",
+        "time": "5 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/September/boots.jpg",
+        "streamers": [],
+        "type": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/directory/category/rust",
+        "name": "HOODIE",
+        "time": "6 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/September/hoodie.jpg",
+        "streamers": [],
+        "type": "General"
+      }
+    ],
     "fail": 0,
     "hero": null
   },
