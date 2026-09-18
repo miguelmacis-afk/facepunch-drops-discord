@@ -4,7 +4,32 @@ const fs = require('fs');
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK;
 
 /**
- * Convierte y traduce cadenas de fechas en objetos Date válidos
+ * Traduce textos de los drops al español (incluye correcciones para "HOUR", "HOURS", etc.)
+ */
+function translateText(text) {
+  if (!text) return '';
+  let translated = text;
+
+  translated = translated.replace(/General Drop/gi, 'Drop General');
+  translated = translated.replace(/Streamer Drop/gi, 'Drop de Streamer');
+  translated = translated.replace(/Exclusive/gi, 'Exclusivo');
+  translated = translated.replace(/Watch for/gi, 'Ver durante');
+  
+  // Traducción precisa de horas y minutos
+  translated = translated.replace(/\b1\s*hours?\b/gi, '1 hora');
+  translated = translated.replace(/\b(\d+)\s*hours?\b/gi, '$1 horas');
+  translated = translated.replace(/\b1\s*hrs?\b/gi, '1 hora');
+  translated = translated.replace(/\b(\d+)\s*hrs?\b/gi, '$1 horas');
+  translated = translated.replace(/\b1\s*minutes?\b/gi, '1 minuto');
+  translated = translated.replace(/\b(\d+)\s*minutes?\b/gi, '$1 minutos');
+  translated = translated.replace(/\b1\s*mins?\b/gi, '1 minuto');
+  translated = translated.replace(/\b(\d+)\s*mins?\b/gi, '$1 mins');
+
+  return translated.trim();
+}
+
+/**
+ * Convierte cadenas de fechas en objetos Date válidos
  */
 function parseFacepunchDate(str) {
   if (!str) return null;
@@ -14,7 +39,6 @@ function parseFacepunchDate(str) {
     .replace(/\bat\b/gi, '')
     .trim();
 
-  // Si no incluye año, añadir el año actual (2026)
   if (!/\b20\d\d\b/.test(cleaned)) {
     cleaned += ` ${new Date().getFullYear()}`;
   }
@@ -22,7 +46,6 @@ function parseFacepunchDate(str) {
   let d = new Date(cleaned);
   if (!isNaN(d.getTime())) return d;
 
-  // Fallback mediante Regex para formatos complejos
   const match = cleaned.match(/(\d{1,2})\s+([a-zA-Z]+)\s*(\d{4})?\s*(\d{1,2}:\d{2})?/);
   if (match) {
     const day = match[1];
@@ -37,7 +60,7 @@ function parseFacepunchDate(str) {
 }
 
 /**
- * Traduce nombres de meses y conectores al español
+ * Traduce nombres de meses al español
  */
 function translateEventTime(timeStr) {
   if (!timeStr) return '';
@@ -61,7 +84,7 @@ function translateEventTime(timeStr) {
 }
 
 /**
- * Procesa las fechas del evento, convirtiendo UTC a CEST y calculando la duración/cuenta atrás
+ * Procesa las fechas del evento (Inicio, Fin, Duración y Cuenta atrás)
  */
 function processEventDates(rawTime) {
   if (!rawTime) {
@@ -86,13 +109,13 @@ function processEventDates(rawTime) {
     startFormatted = `${startDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
     endFormatted = `${endDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
 
-    // Duración
+    // Duración entre las dos fechas
     const durationMs = endDate.getTime() - startDate.getTime();
     const durDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
     const durHours = Math.floor((durationMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     durationStr = `${durDays} días y ${durHours} horas`;
 
-    // Cuenta atrás
+    // Tiempo restante para el inicio
     const now = new Date();
     const diffStartMs = startDate.getTime() - now.getTime();
 
@@ -117,18 +140,17 @@ function processEventDates(rawTime) {
 }
 
 /**
- * Extrae la cabecera del evento (Banner PNG/JPG, Título y Fechas)
+ * Extrae la cabecera del evento limpiando textos basura y filtrando solo fechas
  */
 async function scrapeEventEmbed(page, defaultUrl) {
   return await page.evaluate((url) => {
-    // 1. Título
+    // Título limpio
     const titleEl = document.querySelector('.campaign-title, header h1, .event-title, .hero h1, h1');
     const title = titleEl ? titleEl.innerText.trim() : 'Rust Drops';
 
-    // 2. Imagen del evento (Excluyendo SVGs y Marque SVGs)
+    // Imagen principal PNG/JPG del evento
     let imageUrl = '';
     const allImgs = Array.from(document.querySelectorAll('img'));
-
     const bannerImg = allImgs.find(img => {
       const src = (img.src || '').toLowerCase();
       return src.includes('files.facepunch.com') &&
@@ -149,32 +171,28 @@ async function scrapeEventEmbed(page, defaultUrl) {
       }
     }
 
-    // 3. Fechas del evento
+    // Extracción estricta de la cadena de fechas (excluyendo títulos y subtítulos del evento)
     let timeText = '';
-    const dateSelectors = [
-      '.dates', '.campaign-dates', '.event-dates', '.header-dates',
-      '.dates-container', 'header .subtitle', '.campaign-subtitle', '.subtitle'
-    ];
-
-    for (const sel of dateSelectors) {
-      const el = document.querySelector(sel);
-      if (el && el.innerText.trim() && /\d+/.test(el.innerText)) {
-        timeText = el.innerText.trim();
+    const monthRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
+    
+    // Buscar elementos específicos que contengan fecha y mes
+    const candidates = Array.from(document.querySelectorAll('.dates, .campaign-dates, .event-dates, .header-dates, .dates-container, header span, header p, .subtitle'));
+    for (const el of candidates) {
+      const txt = el.innerText ? el.innerText.trim() : '';
+      if (monthRegex.test(txt) && /\d+/.test(txt) && txt.length < 120) {
+        timeText = txt;
         break;
       }
     }
 
-    // Buscador por palabras clave de meses si los selectores CSS fallan
+    // Fallback por nodos hijos si no se encuentra en contenedores clase
     if (!timeText) {
-      const monthRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
-      const elements = Array.from(document.querySelectorAll('header *, .campaign *, .hero *, main *, body *'));
+      const elements = Array.from(document.querySelectorAll('header *, .campaign *, .hero *'));
       for (const el of elements) {
-        const txt = el.innerText || '';
-        if (monthRegex.test(txt) && /\d+/.test(txt) && txt.length < 150) {
-          if (el.children.length === 0 || el.tagName === 'P' || el.tagName === 'SPAN' || el.tagName === 'DIV') {
-            timeText = txt.trim();
-            break;
-          }
+        const txt = el.innerText ? el.innerText.trim() : '';
+        if (monthRegex.test(txt) && /\d+/.test(txt) && txt.length < 120 && el.children.length === 0) {
+          timeText = txt;
+          break;
         }
       }
     }
@@ -189,7 +207,7 @@ async function scrapeEventEmbed(page, defaultUrl) {
 }
 
 /**
- * Scraper para Twitch Drops
+ * Scraper para Twitch Drops con deduplicación de streamers
  */
 async function scrapeTwitch() {
   const browser = await chromium.launch({ headless: true });
@@ -210,15 +228,21 @@ async function scrapeTwitch() {
         const img = box.querySelector('video img')?.src || box.querySelector('img.drop-image, img')?.src || '';
         const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
 
-        const streamers = [];
+        // Deduplicación de streamers usando Map
+        const streamersMap = new Map();
         box.querySelectorAll('a[href*="twitch.tv"]').forEach(a => {
-          streamers.push({
-            name: a.innerText.trim() || streamerNameRaw || 'Streamer',
-            url: a.href,
-            avatar: a.querySelector('img')?.src || ''
-          });
+          const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
+          const cleanKey = streamerName.toLowerCase();
+          if (cleanKey && !streamersMap.has(cleanKey)) {
+            streamersMap.set(cleanKey, {
+              name: streamerName,
+              url: a.href,
+              avatar: a.querySelector('img')?.src || ''
+            });
+          }
         });
 
+        const streamers = Array.from(streamersMap.values());
         const dropLink = box.querySelector('a')?.href || '';
         const id = dropLink || img || name;
         const type = isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo';
@@ -227,7 +251,14 @@ async function scrapeTwitch() {
       });
     });
 
-    return { embed, drops };
+    const translatedDrops = drops.map(drop => ({
+      ...drop,
+      name_es: translateText(drop.name),
+      time_es: translateText(drop.time),
+      type_es: translateText(drop.type)
+    }));
+
+    return { embed, drops: translatedDrops };
   } catch (err) {
     console.error('❌ Error scraping Twitch:', err);
     return { embed: null, drops: [] };
@@ -237,7 +268,7 @@ async function scrapeTwitch() {
 }
 
 /**
- * Scraper para Kick Drops
+ * Scraper para Kick Drops con deduplicación de streamers
  */
 async function scrapeKick() {
   const browser = await chromium.launch({ headless: true });
@@ -260,15 +291,21 @@ async function scrapeKick() {
         const img = box.querySelector('video img')?.src || box.querySelector('img.drop-image, img')?.src || '';
         const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
 
-        const streamers = [];
+        // Deduplicación de streamers usando Map
+        const streamersMap = new Map();
         box.querySelectorAll('a[href*="kick.com"]').forEach(a => {
-          streamers.push({
-            name: a.innerText.trim() || streamerNameRaw || 'Streamer',
-            url: a.href,
-            avatar: a.querySelector('img')?.src || ''
-          });
+          const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
+          const cleanKey = streamerName.toLowerCase();
+          if (cleanKey && !streamersMap.has(cleanKey)) {
+            streamersMap.set(cleanKey, {
+              name: streamerName,
+              url: a.href,
+              avatar: a.querySelector('img')?.src || ''
+            });
+          }
         });
 
+        const streamers = Array.from(streamersMap.values());
         const dropLink = box.querySelector('a')?.href || '';
         const id = dropLink || img || name;
         const type = isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo';
@@ -277,7 +314,14 @@ async function scrapeKick() {
       });
     });
 
-    return { embed, drops };
+    const translatedDrops = drops.map(drop => ({
+      ...drop,
+      name_es: translateText(drop.name),
+      time_es: translateText(drop.time),
+      type_es: translateText(drop.type)
+    }));
+
+    return { embed, drops: translatedDrops };
   } catch (err) {
     console.error('❌ Error scraping Kick:', err);
     return { embed: null, drops: [] };
@@ -287,7 +331,7 @@ async function scrapeKick() {
 }
 
 /**
- * Envío del Embed principal a Discord
+ * Envío del Embed principal del evento a Discord
  */
 async function sendDiscordEventEmbed(embedData, dateDetails) {
   if (!DISCORD_WEBHOOK_URL) {
@@ -296,10 +340,10 @@ async function sendDiscordEventEmbed(embedData, dateDetails) {
   }
 
   const description = [
-    `🛫 **Inicio:** ${dateDetails.start}`,
-    `🛬 **Fin:** ${dateDetails.end}`,
+    `🛫 **Fecha de inicio:** ${dateDetails.start}`,
+    `🛬 **Fecha final:** ${dateDetails.end}`,
     `⏳ **Duración del evento:** ${dateDetails.duration}`,
-    `⏰ **Tiempo para el inicio:** ${dateDetails.countdown}`
+    `⏰ **Estado / Cuenta atrás:** ${dateDetails.countdown}`
   ].join('\n\n');
 
   const discordPayload = {
