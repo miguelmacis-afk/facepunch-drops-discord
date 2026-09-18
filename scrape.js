@@ -8,14 +8,36 @@ const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK;
  */
 function parseFacepunchDate(str) {
   if (!str) return null;
-  // Limpiar ordinales (24th -> 24) y conectores 'at'
-  let cleaned = str.replace(/(\d+)(st|nd|rd|th)/gi, '$1').replace(/\bat\b/gi, '').trim();
+
+  let cleaned = str
+    .replace(/(\d+)(st|nd|rd|th)/gi, '$1')
+    .replace(/\bat\b/gi, '')
+    .trim();
+
+  // Si no incluye año, añadir el año actual (2026)
+  if (!/\b20\d\d\b/.test(cleaned)) {
+    cleaned += ` ${new Date().getFullYear()}`;
+  }
+
   let d = new Date(cleaned);
-  return isNaN(d.getTime()) ? null : d;
+  if (!isNaN(d.getTime())) return d;
+
+  // Fallback mediante Regex para formatos complejos
+  const match = cleaned.match(/(\d{1,2})\s+([a-zA-Z]+)\s*(\d{4})?\s*(\d{1,2}:\d{2})?/);
+  if (match) {
+    const day = match[1];
+    const month = match[2];
+    const year = match[3] || new Date().getFullYear();
+    const time = match[4] || '00:00';
+    d = new Date(`${month} ${day}, ${year} ${time}`);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  return null;
 }
 
 /**
- * Traduce nombres de meses al español
+ * Traduce nombres de meses y conectores al español
  */
 function translateEventTime(timeStr) {
   if (!timeStr) return '';
@@ -60,18 +82,17 @@ function processEventDates(rawTime) {
 
   if (startDate && endDate) {
     const options = { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-    
-    // Conversión horaria a CEST / Madrid
+
     startFormatted = `${startDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
     endFormatted = `${endDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
 
-    // 1. Duración del evento
+    // Duración
     const durationMs = endDate.getTime() - startDate.getTime();
     const durDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
     const durHours = Math.floor((durationMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     durationStr = `${durDays} días y ${durHours} horas`;
 
-    // 2. Tiempo para que comience
+    // Cuenta atrás
     const now = new Date();
     const diffStartMs = startDate.getTime() - now.getTime();
 
@@ -96,29 +117,73 @@ function processEventDates(rawTime) {
 }
 
 /**
- * Extrae la cabecera del evento (Banner, Título y Fechas)
+ * Extrae la cabecera del evento (Banner PNG/JPG, Título y Fechas)
  */
 async function scrapeEventEmbed(page, defaultUrl) {
   return await page.evaluate((url) => {
-    const titleEl = document.querySelector('.campaign-title, header h1, .event-title, h1');
+    // 1. Título
+    const titleEl = document.querySelector('.campaign-title, header h1, .event-title, .hero h1, h1');
+    const title = titleEl ? titleEl.innerText.trim() : 'Rust Drops';
 
-    // Imagen principal del evento actual
+    // 2. Imagen del evento (Excluyendo SVGs y Marque SVGs)
     let imageUrl = '';
-    const campaignImg = document.querySelector('.campaign-header img, header img, img[src*="files.facepunch.com"]');
-    if (campaignImg && campaignImg.src) {
-      imageUrl = campaignImg.src;
+    const allImgs = Array.from(document.querySelectorAll('img'));
+
+    const bannerImg = allImgs.find(img => {
+      const src = (img.src || '').toLowerCase();
+      return src.includes('files.facepunch.com') &&
+             !src.endsWith('.svg') &&
+             !src.includes('svg') &&
+             !src.includes('logo') &&
+             !src.includes('icon') &&
+             !src.includes('avatar') &&
+             !src.includes('marque');
+    });
+
+    if (bannerImg) {
+      imageUrl = bannerImg.src;
     } else {
-      imageUrl = document.querySelector('meta[property="og:image"]')?.content || '';
+      const metaOg = document.querySelector('meta[property="og:image"]')?.content || '';
+      if (metaOg && !metaOg.toLowerCase().endsWith('.svg') && !metaOg.toLowerCase().includes('svg')) {
+        imageUrl = metaOg;
+      }
     }
 
-    // Fechas
-    const timeEl = document.querySelector('.dates, .campaign-dates, .event-dates, .header-dates, .dates-container, header .subtitle');
+    // 3. Fechas del evento
+    let timeText = '';
+    const dateSelectors = [
+      '.dates', '.campaign-dates', '.event-dates', '.header-dates',
+      '.dates-container', 'header .subtitle', '.campaign-subtitle', '.subtitle'
+    ];
+
+    for (const sel of dateSelectors) {
+      const el = document.querySelector(sel);
+      if (el && el.innerText.trim() && /\d+/.test(el.innerText)) {
+        timeText = el.innerText.trim();
+        break;
+      }
+    }
+
+    // Buscador por palabras clave de meses si los selectores CSS fallan
+    if (!timeText) {
+      const monthRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
+      const elements = Array.from(document.querySelectorAll('header *, .campaign *, .hero *, main *, body *'));
+      for (const el of elements) {
+        const txt = el.innerText || '';
+        if (monthRegex.test(txt) && /\d+/.test(txt) && txt.length < 150) {
+          if (el.children.length === 0 || el.tagName === 'P' || el.tagName === 'SPAN' || el.tagName === 'DIV') {
+            timeText = txt.trim();
+            break;
+          }
+        }
+      }
+    }
 
     return {
-      title: titleEl ? titleEl.innerText.trim() : 'Rust Drops',
+      title,
       url: 'https://twitch.facepunch.com/',
       image: imageUrl,
-      time: timeEl ? timeEl.innerText.trim() : ''
+      time: timeText
     };
   }, defaultUrl);
 }
@@ -132,7 +197,7 @@ async function scrapeTwitch() {
 
   try {
     console.log('🔍 Extrayendo información de Twitch Drops...');
-    await page.goto('https://twitch.facepunch.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto('https://twitch.facepunch.com/', { waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
     await page.waitForSelector('.drop-box', { timeout: 15000 }).catch(() => null);
 
     const embed = await scrapeEventEmbed(page, 'https://twitch.facepunch.com/');
@@ -172,7 +237,7 @@ async function scrapeTwitch() {
 }
 
 /**
- * Scraper para Kick Drops con manejo tolerante de tiempo de espera
+ * Scraper para Kick Drops
  */
 async function scrapeKick() {
   const browser = await chromium.launch({ headless: true });
@@ -180,7 +245,7 @@ async function scrapeKick() {
 
   try {
     console.log('🔍 Extrayendo información de Kick Drops...');
-    await page.goto('https://kick.facepunch.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto('https://kick.facepunch.com/', { waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
     await page.waitForSelector('.drop-box', { timeout: 8000 }).catch(() => {
       console.log('⚠️ No se encontraron tarjetas de drops en Kick.');
     });
@@ -283,7 +348,6 @@ async function sendDiscordEventEmbed(embedData, dateDetails) {
 
   const dateDetails = processEventDates(embedHeader.time);
 
-  // Estructura restaurada para compatibilidad completa con jq y GitHub Actions
   const jsonResult = {
     embed: {
       title: embedHeader.title,
@@ -320,6 +384,4 @@ async function sendDiscordEventEmbed(embedData, dateDetails) {
   console.log(`🛬 Fin: ${dateDetails.end}`);
   console.log(`⏳ Duración: ${dateDetails.duration}`);
   console.log(`⏰ Estado: ${dateDetails.countdown}`);
-  console.log(`   - Twitch: ${jsonResult.twitch.drops.length} drops encontrados`);
-  console.log(`   - Kick: ${jsonResult.kick.drops.length} drops encontrados`);
 })();
