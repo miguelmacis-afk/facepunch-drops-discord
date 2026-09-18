@@ -10,7 +10,7 @@
       "start": "24 de septiembre de 2026 a las 21:00 CEST",
       "end": "5 de octubre de 2026 a las 01:59 CEST",
       "duration": "10 días y 4 horas",
-      "countdown": "Faltan 6 días, 15 horas y 25 minutos"
+      "countdown": "Faltan 6 días, 15 horas y 15 minutos"
     }
   },
   "twitch": {
@@ -20,6 +20,7 @@
         "name": "LARGE WOOD BOX",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/box2.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
         "streamers": [],
         "type": "General",
         "name_es": "LARGE WOOD BOX",
@@ -31,6 +32,7 @@
         "name": "AUTO TURRET",
         "time": "2 HOURS",
         "img": "https://files.facepunch.com/lewis/2026/September/auto-turret.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
         "streamers": [],
         "type": "General",
         "name_es": "AUTO TURRET",
@@ -42,6 +44,7 @@
         "name": "SMALL BOX",
         "time": "3 HOURS",
         "img": "https://files.facepunch.com/lewis/2026/September/small-box.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
         "streamers": [],
         "type": "General",
         "name_es": "SMALL BOX",
@@ -53,6 +56,7 @@
         "name": "PANTS",
         "time": "4 HOURS",
         "img": "https://files.facepunch.com/lewis/2026/September/pants.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
         "streamers": [],
         "type": "General",
         "name_es": "PANTS",
@@ -64,6 +68,7 @@
         "name": "WORK BOOTS",
         "time": "5 HOURS",
         "img": "https://files.facepunch.com/lewis/2026/September/boots.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
         "streamers": [],
         "type": "General",
         "name_es": "WORK BOOTS",
@@ -75,6 +80,7 @@
         "name": "HOODIE",
         "time": "6 HOURS",
         "img": "https://files.facepunch.com/lewis/2026/September/hoodie.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
         "streamers": [],
         "type": "General",
         "name_es": "HOODIE",
@@ -86,14 +92,17 @@
         "name": "VAGABOND JACKET",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/jacket.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png",
         "streamers": [
           {
             "name": "LEDOO",
-            "url": "https://www.twitch.tv/LEDOO"
+            "url": "https://www.twitch.tv/LEDOO",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png"
           },
           {
             "name": "FANCYORB",
-            "url": "https://www.twitch.tv/FancyOrb"
+            "url": "https://www.twitch.tv/FancyOrb",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/872cb545-fb66-43f4-b46c-93a3699de808-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -106,14 +115,17 @@
         "name": "ROCKET LAUNCHER",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/rocket-launcher.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png",
         "streamers": [
           {
             "name": "GEEGA",
-            "url": "https://www.twitch.tv/GEEGA"
+            "url": "https://www.twitch.tv/GEEGA",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png"
           },
           {
             "name": "BLOOPRINT",
-            "url": "https://www.twitch.tv/Blooprint"
+            "url": "https://www.twitch.tv/Blooprint",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ac654631-14fe-45a9-aa11-b3f62915fc5e-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -126,14 +138,17 @@
         "name": "ASSAULT RIFLE",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/ak.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/7610c39060476845-profile_image-300x300.png",
         "streamers": [
           {
             "name": "HJUNE",
-            "url": "https://www.twitch.tv/hJune"
+            "url": "https://www.twitch.tv/hJune",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/7610c39060476845-profile_image-300x300.png"
           },
           {
             "name": "HUTNIK",
-            "url": "https://www.twitch.tv/Hutnik"
+            "url": "https://www.twitch.tv/Hutnik",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/27613a46-8c05-4e1c-8f48-97728d8d1943-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -146,10 +161,12 @@
         "name": "SEMI-AUTOMATIC RIFLE",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/semi-auto.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png",
         "streamers": [
           {
             "name": "DISGUISEDTOAST",
-            "url": "https://www.twitch.tv/DisguisedToast"
+            "url": "https://www.twitch.tv/DisguisedToast",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -162,10 +179,12 @@
         "name": "DOUBLE BARREL SHOTGUN",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/dbs.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/6949420f-ce2c-4b7d-bae0-282c707592db-profile_image-300x300.png",
         "streamers": [
           {
             "name": "PETERPARK",
-            "url": "https://www.twitch.tv/peterpark"
+            "url": "https://www.twitch.tv/peterpark",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/6949420f-ce2c-4b7d-bae0-282c707592db-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -178,14 +197,17 @@
         "name": "BOONIE HAT",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/boonie-hat.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png",
         "streamers": [
           {
             "name": "FUSLIE",
-            "url": "https://www.twitch.tv/fuslie"
+            "url": "https://www.twitch.tv/fuslie",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png"
           },
           {
             "name": "SVEN",
-            "url": "https://www.twitch.tv/Sven"
+            "url": "https://www.twitch.tv/Sven",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/bf495368-5a03-49f9-8c1b-cb999815d854-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -198,10 +220,12 @@
         "name": "SMALL BACKPACK",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/backpack.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/46eb10dd-1d19-4d87-a362-cc8d7935d3b5-profile_image-300x300.png",
         "streamers": [
           {
             "name": "ABE",
-            "url": "https://www.twitch.tv/Abe"
+            "url": "https://www.twitch.tv/Abe",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/46eb10dd-1d19-4d87-a362-cc8d7935d3b5-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -214,10 +238,12 @@
         "name": "FURNACE",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/furnace.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/476ee93d-66a6-4e57-b3a9-db1ceb168ad8-profile_image-300x300.png",
         "streamers": [
           {
             "name": "ESFANDTV",
-            "url": "https://www.twitch.tv/EsfandTV"
+            "url": "https://www.twitch.tv/EsfandTV",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/476ee93d-66a6-4e57-b3a9-db1ceb168ad8-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -230,10 +256,12 @@
         "name": "WOODEN DOOR",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/wooden-door.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/26a16ad4-a927-494d-8ade-d6d09ece4a79-profile_image-300x300.png",
         "streamers": [
           {
             "name": "XCHOCOBARS",
-            "url": "https://www.twitch.tv/xChocoBars"
+            "url": "https://www.twitch.tv/xChocoBars",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/26a16ad4-a927-494d-8ade-d6d09ece4a79-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -246,10 +274,12 @@
         "name": "LARGE WOOD BOX",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/box1.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/c2aca19b-b318-4398-99a5-fb6a597536fd-profile_image-300x300.png",
         "streamers": [
           {
             "name": "IRONMOUSE",
-            "url": "https://www.twitch.tv/ironmouse"
+            "url": "https://www.twitch.tv/ironmouse",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/c2aca19b-b318-4398-99a5-fb6a597536fd-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -262,10 +292,12 @@
         "name": "SALVAGED SWORD",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/sword.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/0526935c-5783-4590-8dc1-16445842633d-profile_image-300x300.png",
         "streamers": [
           {
             "name": "WILLNEFF",
-            "url": "https://www.twitch.tv/willneff"
+            "url": "https://www.twitch.tv/willneff",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/0526935c-5783-4590-8dc1-16445842633d-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -278,10 +310,12 @@
         "name": "GARAGE DOOR",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png",
         "streamers": [
           {
             "name": "FOOLISH",
-            "url": "https://www.twitch.tv/Foolish"
+            "url": "https://www.twitch.tv/Foolish",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -294,10 +328,12 @@
         "name": "LOCKER",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/locker.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/4eadab7a-eb89-4205-b89f-6da0b2c2bf36-profile_image-300x300.png",
         "streamers": [
           {
             "name": "TINAKITTEN",
-            "url": "https://www.twitch.tv/TinaKitten"
+            "url": "https://www.twitch.tv/TinaKitten",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/4eadab7a-eb89-4205-b89f-6da0b2c2bf36-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -310,14 +346,17 @@
         "name": "METAL FACEMASK",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/facemask.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/41b88ab3-4624-4054-a60a-464ecb49af24-profile_image-300x300.png",
         "streamers": [
           {
             "name": "CYR",
-            "url": "https://www.twitch.tv/CYR"
+            "url": "https://www.twitch.tv/CYR",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/41b88ab3-4624-4054-a60a-464ecb49af24-profile_image-300x300.png"
           },
           {
             "name": "MRWOBBLESTWITCH",
-            "url": "https://www.twitch.tv/mrwobblestwitch"
+            "url": "https://www.twitch.tv/mrwobblestwitch",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ed414c0a-e3e7-4f78-aa7f-37bc6ed319fe-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -330,14 +369,17 @@
         "name": "METAL CHESTPLATE",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/chest-plate.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/df7b9ae8-926f-4a27-a3e2-fd151574b078-profile_image-300x300.png",
         "streamers": [
           {
             "name": "ACEU",
-            "url": "https://www.twitch.tv/aceu"
+            "url": "https://www.twitch.tv/aceu",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/df7b9ae8-926f-4a27-a3e2-fd151574b078-profile_image-300x300.png"
           },
           {
             "name": "ZCHUM",
-            "url": "https://www.twitch.tv/ZChum"
+            "url": "https://www.twitch.tv/ZChum",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/65cfe27c-2319-4261-86fe-4a9ff1c596dd-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
@@ -350,14 +392,17 @@
         "name": "TACTICAL GLOVES",
         "time": "1 HOUR",
         "img": "https://files.facepunch.com/lewis/2026/September/gloves.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/9948c83e-5735-48f7-91c6-afb71827b498-profile_image-300x300.jpeg",
         "streamers": [
           {
             "name": "ITSRYANHIGA",
-            "url": "https://www.twitch.tv/itsRyanHiga"
+            "url": "https://www.twitch.tv/itsRyanHiga",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/9948c83e-5735-48f7-91c6-afb71827b498-profile_image-300x300.jpeg"
           },
           {
             "name": "WELYN",
-            "url": "https://www.twitch.tv/Welyn"
+            "url": "https://www.twitch.tv/Welyn",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/83d06b9c-ef42-4012-8886-20a3d1316239-profile_image-300x300.png"
           }
         ],
         "type": "Exclusivo",
