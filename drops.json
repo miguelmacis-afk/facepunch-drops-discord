@@ -1,6 +1,18 @@
 {
-  "event_title": "Rust Isles",
   "last_header_sent": "18/9/2026",
+  "embed": {
+    "title": "Rust Isles",
+    "url": "https://twitch.facepunch.com/",
+    "image": "https://files.facepunch.com/lewis/2026/September/rust_isles.png",
+    "time": "",
+    "time_es": "",
+    "time_details": {
+      "start": "No disponible",
+      "end": "No disponible",
+      "duration": "N/A",
+      "countdown": "N/A"
+    }
+  },
   "twitch": {
     "drops": [
       {
