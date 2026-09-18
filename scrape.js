@@ -267,10 +267,19 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
 // EJECUCIÓN PRINCIPAL
 // ========================
 (async () => {
-  // 1. Cargar Estado Anterior
+  // 1. Cargar Estado Anterior de forma segura
   let state = { event_title: '', last_header_sent: '', twitch: { drops: [] }, kick: { drops: [] } };
   if (fs.existsSync(STATE_FILE)) {
-    try { state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } 
+    try { 
+      const loadedState = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); 
+      // Fusionamos el estado para garantizar que los objetos anidados nunca sean "undefined"
+      state = {
+        ...state,
+        ...loadedState,
+        twitch: loadedState.twitch || { drops: [] },
+        kick: loadedState.kick || { drops: [] }
+      };
+    } 
     catch (e) { console.error('⚠️ Aviso: No se pudo leer state.json, iniciando limpio.'); }
   }
 
@@ -278,7 +287,7 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const twitchData = await scrapePlatform(context, 'https://twitch.facepunch.com/');
-  const kickData = await scrapePlatform(context, 'https://kick.com/rust'); // URL actualizada de Kick si corresponde
+  const kickData = await scrapePlatform(context, 'https://kick.com/rust'); 
   await browser.close();
 
   const embedHeader = twitchData.embed || kickData.embed || { title: 'Rust Drops', url: 'https://twitch.facepunch.com/', image: '', time: '' };
@@ -302,9 +311,9 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
     await delay(2000);
   }
 
-  // 4. Procesar y Enviar Drops Nuevos a Discord
-  state.twitch.drops = await processAndSendDrops('Twitch', twitchData.drops, state.twitch.drops || [], COLORS.TWITCH);
-  state.kick.drops = await processAndSendDrops('Kick', kickData.drops, state.kick.drops || [], COLORS.KICK);
+  // 4. Procesar y Enviar Drops Nuevos a Discord (Añadido '?' por seguridad extra)
+  state.twitch.drops = await processAndSendDrops('Twitch', twitchData.drops || [], state.twitch?.drops || [], COLORS.TWITCH);
+  state.kick.drops = await processAndSendDrops('Kick', kickData.drops || [], state.kick?.drops || [], COLORS.KICK);
   state.event_title = embedHeader.title;
 
   // 5. Guardar Archivos Limpios
