@@ -5,7 +5,6 @@ const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK;
 const STATE_FILE = 'state.json';
 const DROPS_FILE = 'drops.json';
 
-// Colores para los embeds de Discord
 const COLORS = {
   TWITCH: 9502720,
   KICK: 3066993,
@@ -13,14 +12,8 @@ const COLORS = {
   HEADER: 13517355
 };
 
-/**
- * Función de pausa para respetar Rate Limits de Discord
- */
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Traduce los nombres de los objetos del juego al español
- */
 function translateItemName(name) {
   if (!name) return 'Objeto Desconocido';
   const dict = {
@@ -58,42 +51,40 @@ function translateItemName(name) {
   return name;
 }
 
-/**
- * Traduce textos generales y duraciones
- */
 function translateText(text) {
   if (!text) return '';
-  return text
-    .replace(/General Drop/gi, 'Drop General')
-    .replace(/Streamer Drop/gi, 'Drop de Streamer')
-    .replace(/Exclusive/gi, 'Exclusivo')
-    .replace(/Watch for/gi, 'Ver durante')
-    .replace(/\b1\s*hours?\b/gi, '1 hora')
-    .replace(/\b(\d+)\s*hours?\b/gi, '$1 horas')
-    .replace(/\b1\s*hrs?\b/gi, '1 hora')
-    .replace(/\b(\d+)\s*hrs?\b/gi, '$1 horas')
-    .replace(/\b1\s*minutes?\b/gi, '1 minuto')
-    .replace(/\b(\d+)\s*minutes?\b/gi, '$1 minutos')
-    .replace(/\b1\s*mins?\b/gi, '1 minuto')
-    .replace(/\b(\d+)\s*mins?\b/gi, '$1 mins')
-    .trim();
+  let translated = text;
+  translated = translated.replace(/General Drop/gi, 'Drop General');
+  translated = translated.replace(/Streamer Drop/gi, 'Drop de Streamer');
+  translated = translated.replace(/Exclusive/gi, 'Exclusivo');
+  translated = translated.replace(/Watch for/gi, 'Ver durante');
+  translated = translated.replace(/\b1\s*hours?\b/gi, '1 hora');
+  translated = translated.replace(/\b(\d+)\s*hours?\b/gi, '$1 horas');
+  translated = translated.replace(/\b1\s*hrs?\b/gi, '1 hora');
+  translated = translated.replace(/\b(\d+)\s*hrs?\b/gi, '$1 horas');
+  translated = translated.replace(/\b1\s*minutes?\b/gi, '1 minuto');
+  translated = translated.replace(/\b(\d+)\s*minutes?\b/gi, '$1 minutos');
+  translated = translated.replace(/\b1\s*mins?\b/gi, '1 minuto');
+  translated = translated.replace(/\b(\d+)\s*mins?\b/gi, '$1 mins');
+  return translated.trim();
 }
 
-/**
- * Parsea y traduce las fechas del evento
- */
 function parseFacepunchDate(str) {
   if (!str) return null;
   let cleaned = str.replace(/(\d+)(st|nd|rd|th)/gi, '$1').replace(/\bat\b/gi, '').trim();
-  if (!/\b20\d\d\b/.test(cleaned)) cleaned += ` ${new Date().getFullYear()}`;
-
+  if (!/\b20\d\d\b/.test(cleaned)) {
+    cleaned += ` ${new Date().getFullYear()}`;
+  }
   let d = new Date(cleaned);
   if (!isNaN(d.getTime())) return d;
 
   const match = cleaned.match(/(\d{1,2})\s+([a-zA-Z]+)\s*(\d{4})?\s*(\d{1,2}:\d{2})?/);
   if (match) {
+    const day = match[1];
+    const month = match[2];
+    const year = match[3] || new Date().getFullYear();
     const time = match[4] || '00:00';
-    d = new Date(`${match[2]} ${match[1]}, ${match[3] || new Date().getFullYear()} ${time}`);
+    d = new Date(`${month} ${day}, ${year} ${time}`);
     if (!isNaN(d.getTime())) return d;
   }
   return null;
@@ -111,22 +102,41 @@ function translateEventTime(timeStr) {
 }
 
 function processEventDates(rawTime) {
-  if (!rawTime) return { start: 'No disponible', end: 'No disponible', duration: 'N/A', countdown: 'N/A' };
+  if (!rawTime) {
+    return { start: 'Fecha no disponible', end: 'Fecha no disponible', duration: 'N/A', countdown: 'N/A' };
+  }
 
   const parts = rawTime.split(/—|–|-|\bto\b|\buntil\b|\n/i);
-  const startDate = parseFacepunchDate(parts[0]?.trim());
-  const endDate = parseFacepunchDate(parts[1]?.trim());
+  const startRaw = parts[0] ? parts[0].trim() : '';
+  const endRaw = parts[1] ? parts[1].trim() : '';
 
-  let durationStr = 'No calculable', countdownStr = 'No calculable';
+  const startDate = parseFacepunchDate(startRaw);
+  const endDate = parseFacepunchDate(endRaw);
+
+  let startFormatted = translateEventTime(startRaw);
+  let endFormatted = translateEventTime(endRaw);
+  let durationStr = 'No calculable';
+  let countdownStr = 'No calculable';
 
   if (startDate && endDate) {
-    const durationMs = endDate.getTime() - startDate.getTime();
-    durationStr = `${Math.floor(durationMs / 86400000)} días y ${Math.floor((durationMs % 86400000) / 3600000)} horas`;
+    const options = { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+    startFormatted = `${startDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
+    endFormatted = `${endDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
 
-    const diffStartMs = startDate.getTime() - new Date().getTime();
+    const durationMs = endDate.getTime() - startDate.getTime();
+    const durDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
+    const durHours = Math.floor((durationMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    durationStr = `${durDays} días y ${durHours} horas`;
+
+    const now = new Date();
+    const diffStartMs = startDate.getTime() - now.getTime();
+
     if (diffStartMs > 0) {
-      countdownStr = `Faltan ${Math.floor(diffStartMs / 86400000)} días, ${Math.floor((diffStartMs % 86400000) / 3600000)} horas y ${Math.floor((diffStartMs % 3600000) / 60000)} minutos`;
-    } else if (new Date() < endDate) {
+      const cdDays = Math.floor(diffStartMs / (1000 * 60 * 60 * 24));
+      const cdHours = Math.floor((diffStartMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const cdMins = Math.floor((diffStartMs % (1000 * 60 * 60)) / (1000 * 60));
+      countdownStr = `Faltan ${cdDays} días, ${cdHours} horas y ${cdMins} minutos`;
+    } else if (now < endDate) {
       countdownStr = '🔥 ¡El evento ya está activo!';
     } else {
       countdownStr = '🔴 El evento ha finalizado';
@@ -134,15 +144,13 @@ function processEventDates(rawTime) {
   }
 
   return {
-    start: startDate ? `${startDate.toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' })} CEST` : translateEventTime(parts[0]),
-    end: endDate ? `${endDate.toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' })} CEST` : translateEventTime(parts[1]),
-    duration: durationStr, countdown: countdownStr
+    start: startFormatted || 'Fecha no disponible',
+    end: endFormatted || 'Fecha no disponible',
+    duration: durationStr,
+    countdown: countdownStr
   };
 }
 
-/**
- * Scraper Universal (sirve para Twitch y Kick)
- */
 async function scrapePlatform(context, url) {
   const page = await context.newPage();
   try {
@@ -151,19 +159,53 @@ async function scrapePlatform(context, url) {
     await page.waitForSelector('.drop-box', { timeout: 15000 }).catch(() => null);
 
     const embed = await page.evaluate((baseUrl) => {
-      let title = (document.querySelector('.campaign-title, header h1, .event-title, h1')?.innerText.trim() || 'Rust Drops').split('\n')[0];
-      
-      let imageUrl = Array.from(document.querySelectorAll('img')).find(img => {
+      const titleEl = document.querySelector('.campaign-title, header h1, .event-title, .hero h1, h1');
+      let title = titleEl ? titleEl.innerText.trim() : 'Rust Drops';
+      title = title.split('\n')[0].trim();
+
+      let imageUrl = '';
+      const allImgs = Array.from(document.querySelectorAll('img'));
+      const bannerImg = allImgs.find(img => {
         const src = (img.src || '').toLowerCase();
-        return src.includes('files.facepunch.com') && !src.includes('svg') && !src.includes('logo') && !src.includes('icon');
-      })?.src || document.querySelector('meta[property="og:image"]')?.content || '';
+        return src.includes('files.facepunch.com') &&
+               !src.endsWith('.svg') && !src.includes('svg') &&
+               !src.includes('logo') && !src.includes('icon') &&
+               !src.includes('avatar') && !src.includes('marque');
+      });
+
+      if (bannerImg) {
+        imageUrl = bannerImg.src;
+      } else {
+        const metaOg = document.querySelector('meta[property="og:image"]')?.content || '';
+        if (metaOg && !metaOg.toLowerCase().endsWith('.svg') && !metaOg.toLowerCase().includes('svg')) {
+          imageUrl = metaOg;
+        }
+      }
 
       let timeText = '';
       const monthRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
-      const dateContainers = document.querySelectorAll('.dates, .campaign-dates, header .subtitle');
+
+      const dateContainers = document.querySelectorAll('.dates, .campaign-dates, .event-dates, .header-dates, .dates-container, header .subtitle');
       for (const el of dateContainers) {
         const txt = el.innerText ? el.innerText.replace(/\s+/g, ' ').trim() : '';
-        if (monthRegex.test(txt) && /\d+/.test(txt)) { timeText = txt; break; }
+        if (monthRegex.test(txt) && /\d+/.test(txt)) {
+          timeText = txt;
+          break;
+        }
+      }
+
+      if (!timeText || (!timeText.includes('—') && !timeText.includes('-') && !/to|until/i.test(timeText))) {
+        const leafElements = Array.from(document.querySelectorAll('header *, .campaign *, .hero *'))
+          .filter(el => el.children.length === 0 && monthRegex.test(el.innerText || ''));
+
+        if (leafElements.length >= 2) {
+          timeText = `${leafElements[0].innerText.trim()} — ${leafElements[1].innerText.trim()}`;
+        } else if (leafElements.length === 1 && leafElements[0].parentElement) {
+          const parentTxt = leafElements[0].parentElement.innerText.replace(/\s+/g, ' ').trim();
+          if (monthRegex.test(parentTxt)) {
+            timeText = parentTxt;
+          }
+        }
       }
 
       return { title, url: baseUrl, image: imageUrl, time: timeText };
@@ -171,24 +213,28 @@ async function scrapePlatform(context, url) {
 
     const drops = await page.$$eval('.drop-box', (boxes, isKick) => {
       return boxes.map(box => {
-        const streamerNameRaw = box.querySelector('.streamer-name, .streamer-title')?.innerText.trim() || '';
+        const streamerNameRaw = box.querySelector('.streamer-name, .streamer-info span, .streamer-title')?.innerText.trim() || '';
         const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
         const name = box.querySelector('.drop-type, .drop-name')?.innerText.trim() || 'Unknown Drop';
         const img = box.querySelector('video img')?.src || box.querySelector('img.drop-image, img')?.src || '';
+        const time = box.querySelector('.drop-time span, .drop-time')?.innerText.trim() || 'Unknown';
 
         const streamersMap = new Map();
         box.querySelectorAll(`a[href*="${isKick ? 'kick.com' : 'twitch.tv'}"]`).forEach(a => {
           const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
-          if (!streamersMap.has(streamerName.toLowerCase())) {
-            streamersMap.set(streamerName.toLowerCase(), { name: streamerName, url: a.href });
+          const cleanKey = streamerName.toLowerCase();
+          if (cleanKey && !streamersMap.has(cleanKey)) {
+            streamersMap.set(cleanKey, { name: streamerName, url: a.href });
           }
         });
 
         const streamers = Array.from(streamersMap.values());
+        const dropLink = box.querySelector('a')?.href || '';
+        
         return {
-          id: box.querySelector('a')?.href || img || name,
+          id: dropLink || img || name,
           name,
-          time: box.querySelector('.drop-time')?.innerText.trim() || 'Unknown',
+          time,
           img,
           streamers,
           type: isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo'
@@ -208,9 +254,6 @@ async function scrapePlatform(context, url) {
   }
 }
 
-/**
- * Motor de envíos a Discord (Embeds Dinámicos)
- */
 async function sendDiscordWebhook(payload) {
   if (!DISCORD_WEBHOOK_URL) return;
   try {
@@ -224,9 +267,6 @@ async function sendDiscordWebhook(payload) {
   }
 }
 
-/**
- * Procesa y envía nuevos Drops comparando el estado actual
- */
 async function processAndSendDrops(platformName, currentDrops, previousDrops, color) {
   const previousIds = new Set(previousDrops.map(d => d.id));
   const newDrops = currentDrops.filter(d => !previousIds.has(d.id));
@@ -257,7 +297,7 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
         thumbnail: { url: drop.img }
       }]
     });
-    await delay(1500); // Evitar Rate Limit de Discord
+    await delay(1500); 
   }
 
   return currentDrops;
@@ -267,12 +307,10 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
 // EJECUCIÓN PRINCIPAL
 // ========================
 (async () => {
-  // 1. Cargar Estado Anterior de forma segura
   let state = { event_title: '', last_header_sent: '', twitch: { drops: [] }, kick: { drops: [] } };
   if (fs.existsSync(STATE_FILE)) {
     try { 
       const loadedState = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); 
-      // Fusionamos el estado para garantizar que los objetos anidados nunca sean "undefined"
       state = {
         ...state,
         ...loadedState,
@@ -283,18 +321,16 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
     catch (e) { console.error('⚠️ Aviso: No se pudo leer state.json, iniciando limpio.'); }
   }
 
-  // 2. Extraer Datos (Navegador Único)
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const twitchData = await scrapePlatform(context, 'https://twitch.facepunch.com/');
-  const kickData = await scrapePlatform(context, 'https://kick.com/rust'); 
+  const kickData = await scrapePlatform(context, 'https://kick.facepunch.com/'); 
   await browser.close();
 
   const embedHeader = twitchData.embed || kickData.embed || { title: 'Rust Drops', url: 'https://twitch.facepunch.com/', image: '', time: '' };
   const dateDetails = processEventDates(embedHeader.time);
   const todayStr = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
 
-  // 3. Enviar Cabecera de Evento (Máximo 1 vez al día)
   if (state.last_header_sent !== todayStr && embedHeader.title) {
     console.log(`📢 Enviando cabecera del evento: ${embedHeader.title}`);
     await sendDiscordWebhook({
@@ -309,14 +345,14 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
     });
     state.last_header_sent = todayStr;
     await delay(2000);
+  } else {
+    console.log('ℹ️ El embed del evento ya se envió hoy. Omitiendo envío a Discord de la cabecera.');
   }
 
-  // 4. Procesar y Enviar Drops Nuevos a Discord (Añadido '?' por seguridad extra)
   state.twitch.drops = await processAndSendDrops('Twitch', twitchData.drops || [], state.twitch?.drops || [], COLORS.TWITCH);
   state.kick.drops = await processAndSendDrops('Kick', kickData.drops || [], state.kick?.drops || [], COLORS.KICK);
   state.event_title = embedHeader.title;
 
-  // 5. Guardar Archivos Limpios
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
   fs.writeFileSync(DROPS_FILE, JSON.stringify({
     last_header_sent: state.last_header_sent,
@@ -326,4 +362,9 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
   }, null, 2));
 
   console.log(`\n✅ Ejecución finalizada correctamente.`);
+  console.log(`📌 Título: ${embedHeader.title}`);
+  console.log(`🛫 Inicio: ${dateDetails.start}`);
+  console.log(`🛬 Fin: ${dateDetails.end}`);
+  console.log(`⏳ Duración: ${dateDetails.duration}`);
+  console.log(`⏰ Estado: ${dateDetails.countdown}`);
 })();
