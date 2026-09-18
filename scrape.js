@@ -397,7 +397,31 @@ async function sendDiscordEventEmbed(embedData, dateDetails) {
 
   const dateDetails = processEventDates(embedHeader.time);
 
+  // 1. Leer state.json para comprobar el último envío
+  let state = {};
+  if (fs.existsSync('state.json')) {
+    try {
+      state = JSON.parse(fs.readFileSync('state.json', 'utf8'));
+    } catch (err) {
+      console.error('⚠️ No se pudo leer state.json:', err.message);
+    }
+  }
+
+  // 2. Obtener la fecha de hoy (formato YYYY-MM-DD)
+  const todayStr = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
+  let lastHeaderSent = state.last_header_sent || '';
+
+  // 3. Enviar a Discord SOLO si no se ha enviado hoy
+  if (lastHeaderSent !== todayStr) {
+    await sendDiscordEventEmbed(embedHeader, dateDetails);
+    lastHeaderSent = todayStr;
+  } else {
+    console.log('ℹ️ El embed del evento ya se envió hoy. Omitiendo envío a Discord.');
+  }
+
+  // 4. Guardar last_header_sent en jsonResult para sincronizarlo con state.json
   const jsonResult = {
+    last_header_sent: lastHeaderSent,
     embed: {
       title: embedHeader.title,
       url: 'https://twitch.facepunch.com/',
@@ -423,8 +447,6 @@ async function sendDiscordEventEmbed(embedData, dateDetails) {
   };
 
   fs.writeFileSync('drops.json', JSON.stringify(jsonResult, null, 2));
-
-  await sendDiscordEventEmbed(embedHeader, dateDetails);
 
   console.log(`\n✅ Scraping completado:`);
   console.log(`📌 Título: ${jsonResult.embed.title}`);
