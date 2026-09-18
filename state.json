@@ -9,7 +9,7 @@
       "start": "24 de septiembre de 2026 a las 21:00 CEST",
       "end": "5 de octubre de 2026 a las 01:59 CEST",
       "duration": "10 días y 4 horas",
-      "countdown": "Faltan 6 días, 17 horas y 32 minutos"
+      "countdown": "Faltan 6 días, 17 horas y 26 minutos"
     }
   },
   "twitch": {
@@ -785,5 +785,6 @@
       "time": ""
     }
   },
-  "event_title": ""
+  "event_title": "",
+  "last_header_sent": "18/9/2026"
 }
