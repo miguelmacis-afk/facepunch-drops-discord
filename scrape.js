@@ -29,6 +29,7 @@ function translateText(text) {
 function translateEventTime(timeStr) {
   if (!timeStr) return '';
   return timeStr
+    .replace(/(\d+)(st|nd|rd|th)/gi, '$1') // Convierte '24th' en '24'
     .replace(/January/gi, 'enero')
     .replace(/February/gi, 'febrero')
     .replace(/March/gi, 'marzo')
@@ -41,7 +42,9 @@ function translateEventTime(timeStr) {
     .replace(/October/gi, 'octubre')
     .replace(/November/gi, 'noviembre')
     .replace(/December/gi, 'diciembre')
-    .replace(/at/g, 'a las');
+    .replace(/\bat\b/gi, 'a las')
+    .replace(/\bto\b/gi, 'al')
+    .trim();
 }
 
 /**
@@ -49,27 +52,71 @@ function translateEventTime(timeStr) {
  */
 async function scrapeEventEmbed(page, defaultUrl) {
   return await page.evaluate((url) => {
-    const imgEl = document.querySelector(
-      'header img, .campaign-header img, .header-banner img, img[src*="files.facepunch.com"], .event-logo img'
-    );
-    
+    // 1. Obtener Título
     const titleEl = document.querySelector(
-      'header h1, .campaign-title, .event-title, .header-title, h1'
+      '.campaign-title, header h1, .event-title, .header-title, .hero h1, h1'
     );
+
+    // 2. Obtener Fechas con selectores múltiples y fallback dinámico
+    const timeSelectors = [
+      '.dates',
+      '.campaign-dates',
+      '.event-dates',
+      '.header-dates',
+      '.dates-container',
+      '.schedule',
+      'header .subtitle',
+      '.campaign-subtitle',
+      'header p'
+    ];
     
-    const timeEl = document.querySelector(
-      'header .dates, .campaign-dates, .event-dates, .header-dates, .dates-container, .dates'
+    let timeText = '';
+    for (const sel of timeSelectors) {
+      const el = document.querySelector(sel);
+      if (el && el.innerText.trim()) {
+        timeText = el.innerText.trim();
+        break;
+      }
+    }
+
+    // Fallback: Buscar cualquier elemento dentro del header que contenga un mes en inglés
+    if (!timeText) {
+      const monthsRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
+      const allHeaderNodes = Array.from(document.querySelectorAll('header *, .campaign-header *, .hero *'));
+      const found = allHeaderNodes.find(el => monthsRegex.test(el.innerText) && el.children.length === 0);
+      if (found) {
+        timeText = found.innerText.trim();
+      }
+    }
+
+    // 3. Obtener Imagen del evento (etiqueta <img> o CSS background-image)
+    let imgEl = document.querySelector(
+      '.campaign-header img, header img, .header-banner img, .hero img, .event-logo img, img[src*="files.facepunch.com"], img[src*="cdn.facepunch.com"], img.logo, .logo img'
     );
+    let imageUrl = imgEl ? imgEl.src : '';
+
+    if (!imageUrl) {
+      const bgContainers = document.querySelectorAll('header, .campaign-header, .hero, .header-banner, .banner');
+      for (const bgEl of bgContainers) {
+        const bg = window.getComputedStyle(bgEl).backgroundImage;
+        if (bg && bg !== 'none') {
+          const match = bg.match(/url\(["']?(.*?)["']?\)/);
+          if (match && match[1]) {
+            imageUrl = match[1];
+            break;
+          }
+        }
+      }
+    }
 
     return {
       title: titleEl ? titleEl.innerText.trim() : 'Rust Drops',
-      url: 'https://twitch.facepunch.com/',
-      image: imgEl ? imgEl.src : '',
-      time: timeEl ? timeEl.innerText.trim() : ''
+      url: url,
+      image: imageUrl,
+      time: timeText
     };
   }, defaultUrl);
 }
-
 /**
  * Scraper para Twitch Drops
  */
