@@ -4,7 +4,18 @@ const fs = require('fs');
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK;
 
 /**
- * Traduce el formato de fecha del evento al español eliminando ordinales
+ * Convierte y traduce cadenas de fechas en objetos Date válidos
+ */
+function parseFacepunchDate(str) {
+  if (!str) return null;
+  // Limpiar ordinales (24th -> 24) y conectores 'at'
+  let cleaned = str.replace(/(\d+)(st|nd|rd|th)/gi, '$1').replace(/\bat\b/gi, '').trim();
+  let d = new Date(cleaned);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Traduce nombres de meses al español
  */
 function translateEventTime(timeStr) {
   if (!timeStr) return '';
@@ -28,46 +39,39 @@ function translateEventTime(timeStr) {
 }
 
 /**
- * Procesa el texto de fechas, calcula la duración entre ambas y la cuenta atrás
+ * Procesa las fechas del evento, convirtiendo UTC a CEST y calculando la duración/cuenta atrás
  */
 function processEventDates(rawTime) {
   if (!rawTime) {
-    return { start: 'No disponible', end: 'No disponible', duration: 'N/A', countdown: 'N/A' };
+    return { start: 'Fecha no disponible', end: 'Fecha no disponible', duration: 'N/A', countdown: 'N/A' };
   }
 
-  // Separar fecha de inicio y fin por guion o barra
   const parts = rawTime.split(/—|-|\bto\b/i);
   const startRaw = parts[0] ? parts[0].trim() : '';
   const endRaw = parts[1] ? parts[1].trim() : '';
 
-  // Limpiar ordinales (24th -> 24)
-  const cleanStart = startRaw.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
-  const cleanEnd = endRaw.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
-
-  const startDate = new Date(cleanStart);
-  const endDate = new Date(cleanEnd);
-
-  const isValidStart = !isNaN(startDate.getTime());
-  const isValidEnd = !isNaN(endDate.getTime());
+  const startDate = parseFacepunchDate(startRaw);
+  const endDate = parseFacepunchDate(endRaw);
 
   let startFormatted = translateEventTime(startRaw);
   let endFormatted = translateEventTime(endRaw);
   let durationStr = 'No calculable';
   let countdownStr = 'No calculable';
 
-  if (isValidStart && isValidEnd) {
-    // Formatear en horario CEST / Madrid
+  if (startDate && endDate) {
     const options = { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+    
+    // Conversión horaria a CEST / Madrid
     startFormatted = `${startDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
     endFormatted = `${endDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
 
-    // 1. Calcular duración entre las dos fechas
+    // 1. Duración del evento
     const durationMs = endDate.getTime() - startDate.getTime();
     const durDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
     const durHours = Math.floor((durationMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     durationStr = `${durDays} días y ${durHours} horas`;
 
-    // 2. Calcular tiempo restante para el inicio
+    // 2. Tiempo para que comience
     const now = new Date();
     const diffStartMs = startDate.getTime() - now.getTime();
 
@@ -77,9 +81,9 @@ function processEventDates(rawTime) {
       const cdMins = Math.floor((diffStartMs % (1000 * 60 * 60)) / (1000 * 60));
       countdownStr = `Faltan ${cdDays} días, ${cdHours} horas y ${cdMins} minutos`;
     } else if (now < endDate) {
-      countdownStr = '🔥 ¡El evento ya ha comenzado!';
+      countdownStr = '🔥 ¡El evento ya está en activo!';
     } else {
-      countdownStr = '🔴 El evento ya ha finalizado';
+      countdownStr = '🔴 El evento ha finalizado';
     }
   }
 
@@ -92,37 +96,23 @@ function processEventDates(rawTime) {
 }
 
 /**
- * Extrae la información general del evento (Banner meta, Título y Fechas)
+ * Extrae la cabecera del evento (Banner, Título y Fechas)
  */
 async function scrapeEventEmbed(page, defaultUrl) {
   return await page.evaluate((url) => {
-    // Título
     const titleEl = document.querySelector('.campaign-title, header h1, .event-title, h1');
 
-    // Imagen principal del evento (priorizando meta og:image)
-    let imageUrl = document.querySelector('meta[property="og:image"]')?.content || '';
-
-    if (!imageUrl) {
-      const imgEl = document.querySelector('.campaign-header img, header img, img[src*="files.facepunch.com"]');
-      if (imgEl) imageUrl = imgEl.src;
-    }
-
-    if (!imageUrl) {
-      const bgContainers = document.querySelectorAll('.campaign-header, header, .hero');
-      for (const bgEl of bgContainers) {
-        const bg = window.getComputedStyle(bgEl).backgroundImage;
-        if (bg && bg !== 'none') {
-          const match = bg.match(/url\(["']?(.*?)["']?\)/);
-          if (match && match[1]) {
-            imageUrl = match[1];
-            break;
-          }
-        }
-      }
+    // Imagen principal del evento actual
+    let imageUrl = '';
+    const campaignImg = document.querySelector('.campaign-header img, header img, img[src*="files.facepunch.com"]');
+    if (campaignImg && campaignImg.src) {
+      imageUrl = campaignImg.src;
+    } else {
+      imageUrl = document.querySelector('meta[property="og:image"]')?.content || '';
     }
 
     // Fechas
-    const timeEl = document.querySelector('.dates, .campaign-dates, .event-dates, .header-dates, header .subtitle');
+    const timeEl = document.querySelector('.dates, .campaign-dates, .event-dates, .header-dates, .dates-container, header .subtitle');
 
     return {
       title: titleEl ? titleEl.innerText.trim() : 'Rust Drops',
@@ -143,7 +133,7 @@ async function scrapeTwitch() {
   try {
     console.log('🔍 Extrayendo información de Twitch Drops...');
     await page.goto('https://twitch.facepunch.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForSelector('.drop-box', { timeout: 15000 });
+    await page.waitForSelector('.drop-box', { timeout: 15000 }).catch(() => null);
 
     const embed = await scrapeEventEmbed(page, 'https://twitch.facepunch.com/');
 
@@ -182,7 +172,7 @@ async function scrapeTwitch() {
 }
 
 /**
- * Scraper para Kick Drops
+ * Scraper para Kick Drops con manejo tolerante de tiempo de espera
  */
 async function scrapeKick() {
   const browser = await chromium.launch({ headless: true });
@@ -191,7 +181,9 @@ async function scrapeKick() {
   try {
     console.log('🔍 Extrayendo información de Kick Drops...');
     await page.goto('https://kick.facepunch.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForSelector('.drop-box', { timeout: 15000 });
+    await page.waitForSelector('.drop-box', { timeout: 8000 }).catch(() => {
+      console.log('⚠️ No se encontraron tarjetas de drops en Kick.');
+    });
 
     const embed = await scrapeEventEmbed(page, 'https://kick.facepunch.com/');
 
@@ -230,7 +222,7 @@ async function scrapeKick() {
 }
 
 /**
- * Envía un ÚNICO mensaje Embed con la información detallada del evento a Discord
+ * Envío del Embed principal a Discord
  */
 async function sendDiscordEventEmbed(embedData, dateDetails) {
   if (!DISCORD_WEBHOOK_URL) {
@@ -291,21 +283,34 @@ async function sendDiscordEventEmbed(embedData, dateDetails) {
 
   const dateDetails = processEventDates(embedHeader.time);
 
+  // Estructura restaurada para compatibilidad completa con jq y GitHub Actions
   const jsonResult = {
     embed: {
       title: embedHeader.title,
       url: 'https://twitch.facepunch.com/',
       image: embedHeader.image,
-      time_raw: embedHeader.time,
+      time: embedHeader.time,
+      time_es: translateEventTime(embedHeader.time),
       time_details: dateDetails
     },
-    twitch: twitchData.drops,
-    kick: kickData.drops
+    twitch: {
+      exclusive: twitchData.drops.filter(d => d.type === 'Exclusivo'),
+      general: twitchData.drops.filter(d => d.type === 'General'),
+      drops: twitchData.drops,
+      fail: twitchData.drops.length === 0 ? 1 : 0,
+      hero: twitchData.embed
+    },
+    kick: {
+      exclusive: kickData.drops.filter(d => d.type === 'Exclusivo'),
+      general: kickData.drops.filter(d => d.type === 'General'),
+      drops: kickData.drops,
+      fail: kickData.drops.length === 0 ? 1 : 0,
+      hero: kickData.embed
+    }
   };
 
   fs.writeFileSync('drops.json', JSON.stringify(jsonResult, null, 2));
 
-  // Envío único del Embed
   await sendDiscordEventEmbed(embedHeader, dateDetails);
 
   console.log(`\n✅ Scraping completado:`);
@@ -315,4 +320,6 @@ async function sendDiscordEventEmbed(embedData, dateDetails) {
   console.log(`🛬 Fin: ${dateDetails.end}`);
   console.log(`⏳ Duración: ${dateDetails.duration}`);
   console.log(`⏰ Estado: ${dateDetails.countdown}`);
+  console.log(`   - Twitch: ${jsonResult.twitch.drops.length} drops encontrados`);
+  console.log(`   - Kick: ${jsonResult.kick.drops.length} drops encontrados`);
 })();
