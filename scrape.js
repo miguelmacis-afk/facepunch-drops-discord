@@ -212,6 +212,10 @@ async function scrapePlatform(context, url) {
     }, url);
 
     const drops = await page.$$eval('.drop-box', (boxes, isKick) => {
+      const defaultLogo = isKick
+        ? 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/kick.png'
+        : 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png';
+
       return boxes.map(box => {
         const streamerNameRaw = box.querySelector('.streamer-name, .streamer-info span, .streamer-title')?.innerText.trim() || '';
         const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
@@ -220,15 +224,28 @@ async function scrapePlatform(context, url) {
         const time = box.querySelector('.drop-time span, .drop-time')?.innerText.trim() || 'Unknown';
 
         const streamersMap = new Map();
+        let firstAvatar = '';
+
         box.querySelectorAll(`a[href*="${isKick ? 'kick.com' : 'twitch.tv'}"]`).forEach(a => {
           const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
           const cleanKey = streamerName.toLowerCase();
+          
           if (cleanKey && !streamersMap.has(cleanKey)) {
-            streamersMap.set(cleanKey, { name: streamerName, url: a.href });
+            let avatarSrc = a.querySelector('img')?.src || '';
+            if (!avatarSrc) {
+               const avatarFallback = box.querySelector('.avatar img, img.avatar, .streamer-image img');
+               if (avatarFallback) avatarSrc = avatarFallback.src;
+            }
+            if (!firstAvatar && avatarSrc) firstAvatar = avatarSrc;
+            streamersMap.set(cleanKey, { name: streamerName, url: a.href, avatar: avatarSrc });
           }
         });
 
         const streamers = Array.from(streamersMap.values());
+        const type = isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo';
+        
+        // Guardamos la imagen de perfil principal del drop para el JSON
+        const profileImage = type === 'General' ? defaultLogo : (firstAvatar || defaultLogo);
         const dropLink = box.querySelector('a')?.href || '';
         
         return {
@@ -236,8 +253,9 @@ async function scrapePlatform(context, url) {
           name,
           time,
           img,
+          profile_image: profileImage,
           streamers,
-          type: isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo'
+          type
         };
       });
     }, url.includes('kick'));
@@ -280,6 +298,7 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
     const translatedName = translateItemName(drop.name);
     
     let title, description, url;
+    
     if (isExclusivo) {
       title = `⭐ Drop Exclusivo (${platformName})`;
       url = drop.streamers[0].url;
@@ -291,6 +310,7 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
       description = `🎁 **${translatedName}**\n⏱ ${drop.time_es || drop.time}\n🌍 Disponible en todos los canales participantes con drops.`;
     }
 
+    // Embed de Discord original, sin modificaciones
     await sendDiscordWebhook({
       embeds: [{
         title, url, description, color,
@@ -353,6 +373,7 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
   state.kick.drops = await processAndSendDrops('Kick', kickData.drops || [], state.kick?.drops || [], COLORS.KICK);
   state.event_title = embedHeader.title;
 
+  // Los drops en el JSON ahora incluyen la propiedad "profile_image"
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
   fs.writeFileSync(DROPS_FILE, JSON.stringify({
     last_header_sent: state.last_header_sent,
