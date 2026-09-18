@@ -144,7 +144,7 @@ jobs:
                   URL=$(jq -r '.streamers[0].url' <<<"$DROP")
                   STR_LINKS=$(jq -r '[.streamers[] | "["+.name+"]("+.url+")"] | join(", ")' <<<"$DROP")
                   PLATFORM_NAME=$(if [[ "$URL" == *"kick.com"* ]]; then echo "Kick"; else echo "Twitch"; fi)
-                  TITLE="⭐ Drop Exclusivo ($PLATFORM_NAME)"
+                  TITLE="⭐ Drop Exclusivo"
                   
                   DESC="🎁 **$NAME**"
                   [ ! -z "$AVAIL" ] && DESC="$DESC\n⚠️ **$AVAIL**"
