@@ -30,22 +30,46 @@ jobs:
       - name: Init state.json
         run: |
           if [ ! -f state.json ]; then
-            echo '{"twitch":{"drops":[]},"kick":{"drops":[]},"general":{"drops":[]}}' > state.json
+            echo '{"event_title":"","twitch":{"drops":[]},"kick":{"drops":[]},"general":{"drops":[]}}' > state.json
           fi
 
       - name: Run Scraper
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: node scrape.js
 
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          # Función para procesar secciones (Twitch, Kick o General)
+          # 1. Verificar si hay un evento nuevo para enviar el Embed de Cabecera
+          EVENT_TITLE=$(jq -r '.embed.title // empty' drops.json)
+          EVENT_URL=$(jq -r '.embed.url // "https://twitch.facepunch.com/"' drops.json)
+          EVENT_IMG=$(jq -r '.embed.image // empty' drops.json)
+          EVENT_TIME=$(jq -r '.embed.time_es // .embed.time // empty' drops.json)
+          PREV_EVENT=$(jq -r '.event_title // empty' state.json)
+
+          if [ ! -z "$EVENT_TITLE" ] && [ "$EVENT_TITLE" != "$PREV_EVENT" ]; then
+            echo "📢 Nuevo evento detectado: $EVENT_TITLE. Enviando cabecera a Discord..."
+            
+            DESC="📅 **Fechas del evento:**\n$EVENT_TIME"
+            
+            HEADER_EMBED=$(jq -n \
+              --arg t "$EVENT_TITLE" \
+              --arg u "$EVENT_URL" \
+              --arg d "$(echo -e "$DESC")" \
+              --arg img "$EVENT_IMG" \
+              '{title:$t,url:$u,description:$d,color:13517355,image:{url:$img},footer:{text:"Rust Facepunch Drops Event"}}')
+
+            curl -s -X POST -H "Content-Type: application/json" -d "{\"embeds\":[$HEADER_EMBED]}" "$DISCORD_WEBHOOK"
+            sleep 2
+          fi
+
+          # 2. Función para procesar y enviar secciones de drops (Twitch, Kick o General)
           process_section () {
             KEY=$1      # 'twitch', 'kick' o 'general'
             COLOR=$2
             
-            # Extraer drops del estado anterior y del actual
             PREV=$(jq -c ".${KEY}.drops // []" state.json)
             CURR=$(jq -c ".${KEY}.drops // []" drops.json)
             
@@ -129,13 +153,11 @@ jobs:
                   elif test("Salvaged Sword";"i") then "Espada"
                   elif test("Locker";"i") then "Taquilla"
                   elif test("Metal Chestplate";"i") then "Pechera HQ"
-
-                  
                   elif test("Tactical Gloves";"i") then "Guantes Tácticos"
                   else . end
                 ' --raw-output)
 
-                TIME=$(jq -r '.time' <<<"$DROP")
+                TIME=$(jq -r '.time_es // .time' <<<"$DROP")
                 IMG=$(jq -r '.img' <<<"$DROP")
                 AVAIL=$(jq -r '.availability // empty' <<<"$DROP")
                 ST_COUNT=$(jq '.streamers | length' <<<"$DROP")
@@ -178,8 +200,10 @@ jobs:
           process_section "kick" 3066993
           process_section "general" 2003190
 
-          # Sincronizar drops.json con el estado persistente
-          jq -s '.[0] * .[1]' state.json drops.json > temp.json && mv temp.json state.json
+          # Actualizar título del evento y sincronizar estado persistente
+          jq --arg title "$EVENT_TITLE" '.event_title = $title' drops.json > temp.json
+          jq -s '.[0] * .[1]' state.json temp.json > final.json && mv final.json state.json
+          rm -f temp.json
 
       - name: Commit state.json
         run: |
