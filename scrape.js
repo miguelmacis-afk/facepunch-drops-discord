@@ -4,7 +4,7 @@ const fs = require('fs');
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK;
 
 /**
- * Traduce textos de los drops al español (incluye correcciones para "HOUR", "HOURS", etc.)
+ * Traduce textos de los drops al español (incluye horas y minutos)
  */
 function translateText(text) {
   if (!text) return '';
@@ -15,7 +15,7 @@ function translateText(text) {
   translated = translated.replace(/Exclusive/gi, 'Exclusivo');
   translated = translated.replace(/Watch for/gi, 'Ver durante');
   
-  // Traducción precisa de horas y minutos
+  // Traducción de unidades de tiempo
   translated = translated.replace(/\b1\s*hours?\b/gi, '1 hora');
   translated = translated.replace(/\b(\d+)\s*hours?\b/gi, '$1 horas');
   translated = translated.replace(/\b1\s*hrs?\b/gi, '1 hora');
@@ -91,7 +91,8 @@ function processEventDates(rawTime) {
     return { start: 'Fecha no disponible', end: 'Fecha no disponible', duration: 'N/A', countdown: 'N/A' };
   }
 
-  const parts = rawTime.split(/—|-|\bto\b/i);
+  // Separadores comunes entre fecha de inicio y fin
+  const parts = rawTime.split(/—|–|-|\bto\b|\buntil\b|\n/i);
   const startRaw = parts[0] ? parts[0].trim() : '';
   const endRaw = parts[1] ? parts[1].trim() : '';
 
@@ -109,13 +110,13 @@ function processEventDates(rawTime) {
     startFormatted = `${startDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
     endFormatted = `${endDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
 
-    // Duración entre las dos fechas
+    // Duración entre inicio y fin
     const durationMs = endDate.getTime() - startDate.getTime();
     const durDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
     const durHours = Math.floor((durationMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     durationStr = `${durDays} días y ${durHours} horas`;
 
-    // Tiempo restante para el inicio
+    // Estado / Cuenta atrás
     const now = new Date();
     const diffStartMs = startDate.getTime() - now.getTime();
 
@@ -125,30 +126,31 @@ function processEventDates(rawTime) {
       const cdMins = Math.floor((diffStartMs % (1000 * 60 * 60)) / (1000 * 60));
       countdownStr = `Faltan ${cdDays} días, ${cdHours} horas y ${cdMins} minutos`;
     } else if (now < endDate) {
-      countdownStr = '🔥 ¡El evento ya está en activo!';
+      countdownStr = '🔥 ¡El evento ya está activo!';
     } else {
       countdownStr = '🔴 El evento ha finalizado';
     }
   }
 
   return {
-    start: startFormatted,
-    end: endFormatted,
+    start: startFormatted || 'Fecha no disponible',
+    end: endFormatted || 'Fecha no disponible',
     duration: durationStr,
     countdown: countdownStr
   };
 }
 
 /**
- * Extrae la cabecera del evento limpiando textos basura y filtrando solo fechas
+ * Extrae la cabecera del evento (Título, Banner PNG/JPG y Fechas completas)
  */
 async function scrapeEventEmbed(page, defaultUrl) {
   return await page.evaluate((url) => {
-    // Título limpio
+    // 1. Título limpio (sin duplicaciones)
     const titleEl = document.querySelector('.campaign-title, header h1, .event-title, .hero h1, h1');
-    const title = titleEl ? titleEl.innerText.trim() : 'Rust Drops';
+    let title = titleEl ? titleEl.innerText.trim() : 'Rust Drops';
+    title = title.split('\n')[0].trim(); // Previene títulos multilínea duplicados
 
-    // Imagen principal PNG/JPG del evento
+    // 2. Imagen PNG/JPG del evento
     let imageUrl = '';
     const allImgs = Array.from(document.querySelectorAll('img'));
     const bannerImg = allImgs.find(img => {
@@ -171,28 +173,31 @@ async function scrapeEventEmbed(page, defaultUrl) {
       }
     }
 
-    // Extracción estricta de la cadena de fechas (excluyendo títulos y subtítulos del evento)
+    // 3. Captura completa de fechas (Inicio y Fin)
     let timeText = '';
     const monthRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
-    
-    // Buscar elementos específicos que contengan fecha y mes
-    const candidates = Array.from(document.querySelectorAll('.dates, .campaign-dates, .event-dates, .header-dates, .dates-container, header span, header p, .subtitle'));
-    for (const el of candidates) {
-      const txt = el.innerText ? el.innerText.trim() : '';
-      if (monthRegex.test(txt) && /\d+/.test(txt) && txt.length < 120) {
+
+    // Buscar en contenedores principales de fechas sin recortar nodos hijos
+    const dateContainers = document.querySelectorAll('.dates, .campaign-dates, .event-dates, .header-dates, .dates-container, header .subtitle');
+    for (const el of dateContainers) {
+      const txt = el.innerText ? el.innerText.replace(/\s+/g, ' ').trim() : '';
+      if (monthRegex.test(txt) && /\d+/.test(txt)) {
         timeText = txt;
         break;
       }
     }
 
-    // Fallback por nodos hijos si no se encuentra en contenedores clase
-    if (!timeText) {
-      const elements = Array.from(document.querySelectorAll('header *, .campaign *, .hero *'));
-      for (const el of elements) {
-        const txt = el.innerText ? el.innerText.trim() : '';
-        if (monthRegex.test(txt) && /\d+/.test(txt) && txt.length < 120 && el.children.length === 0) {
-          timeText = txt;
-          break;
+    // Si las fechas están en elementos hijos separados, las detectamos y unimos
+    if (!timeText || !timeText.includes('—') && !timeText.includes('-') && !/to|until/i.test(timeText)) {
+      const leafElements = Array.from(document.querySelectorAll('header *, .campaign *, .hero *'))
+        .filter(el => el.children.length === 0 && monthRegex.test(el.innerText || ''));
+
+      if (leafElements.length >= 2) {
+        timeText = `${leafElements[0].innerText.trim()} — ${leafElements[1].innerText.trim()}`;
+      } else if (leafElements.length === 1 && leafElements[0].parentElement) {
+        const parentTxt = leafElements[0].parentElement.innerText.replace(/\s+/g, ' ').trim();
+        if (monthRegex.test(parentTxt)) {
+          timeText = parentTxt;
         }
       }
     }
@@ -207,7 +212,7 @@ async function scrapeEventEmbed(page, defaultUrl) {
 }
 
 /**
- * Scraper para Twitch Drops con deduplicación de streamers
+ * Scraper para Twitch Drops
  */
 async function scrapeTwitch() {
   const browser = await chromium.launch({ headless: true });
@@ -228,7 +233,7 @@ async function scrapeTwitch() {
         const img = box.querySelector('video img')?.src || box.querySelector('img.drop-image, img')?.src || '';
         const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
 
-        // Deduplicación de streamers usando Map
+        // Deduplicación estricta de streamers
         const streamersMap = new Map();
         box.querySelectorAll('a[href*="twitch.tv"]').forEach(a => {
           const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
@@ -268,7 +273,7 @@ async function scrapeTwitch() {
 }
 
 /**
- * Scraper para Kick Drops con deduplicación de streamers
+ * Scraper para Kick Drops
  */
 async function scrapeKick() {
   const browser = await chromium.launch({ headless: true });
@@ -291,7 +296,7 @@ async function scrapeKick() {
         const img = box.querySelector('video img')?.src || box.querySelector('img.drop-image, img')?.src || '';
         const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
 
-        // Deduplicación de streamers usando Map
+        // Deduplicación estricta de streamers
         const streamersMap = new Map();
         box.querySelectorAll('a[href*="kick.com"]').forEach(a => {
           const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
@@ -331,7 +336,7 @@ async function scrapeKick() {
 }
 
 /**
- * Envío del Embed principal del evento a Discord
+ * Envío del Embed a Discord
  */
 async function sendDiscordEventEmbed(embedData, dateDetails) {
   if (!DISCORD_WEBHOOK_URL) {
