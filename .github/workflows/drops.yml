@@ -42,29 +42,6 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          # 1. Verificar si hay un evento nuevo para enviar el Embed de Cabecera
-          EVENT_TITLE=$(jq -r '.embed.title // empty' drops.json)
-          EVENT_URL=$(jq -r '.embed.url // "https://twitch.facepunch.com/"' drops.json)
-          EVENT_IMG=$(jq -r '.embed.image // empty' drops.json)
-          EVENT_TIME=$(jq -r '.embed.time_es // .embed.time // empty' drops.json)
-          PREV_EVENT=$(jq -r '.event_title // empty' state.json)
-
-          if [ ! -z "$EVENT_TITLE" ] && [ "$EVENT_TITLE" != "$PREV_EVENT" ]; then
-            echo "📢 Nuevo evento detectado: $EVENT_TITLE. Enviando cabecera a Discord..."
-            
-            DESC="📅 **Fechas del evento:**\n$EVENT_TIME"
-            
-            HEADER_EMBED=$(jq -n \
-              --arg t "$EVENT_TITLE" \
-              --arg u "$EVENT_URL" \
-              --arg d "$(echo -e "$DESC")" \
-              --arg img "$EVENT_IMG" \
-              '{title:$t,url:$u,description:$d,color:13517355,image:{url:$img},footer:{text:"Rust Facepunch Drops Event"}}')
-
-            curl -s -X POST -H "Content-Type: application/json" -d "{\"embeds\":[$HEADER_EMBED]}" "$DISCORD_WEBHOOK"
-            sleep 2
-          fi
-
           # 2. Función para procesar y enviar secciones de drops (Twitch, Kick o General)
           process_section () {
             KEY=$1      # 'twitch', 'kick' o 'general'
