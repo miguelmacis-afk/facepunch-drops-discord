@@ -300,12 +300,12 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
     let title, description, url;
     
     if (isExclusivo) {
-      title = `⭐ Drop Exclusivo (${platformName})`;
+      title = `⭐ Drop Exclusivo`;
       url = drop.streamers[0].url;
       const strLinks = drop.streamers.map(s => `[${s.name}](${s.url})`).join(", ");
       description = `🎁 **${translatedName}**\n⏱ ${drop.time_es || drop.time}\n🎮 ${strLinks}\n📺 Plataforma: ${platformName}`;
     } else {
-      title = `🌍 Drop General (${platformName})`;
+      title = `🌍 Drop General`;
       url = platformName === 'Kick' ? 'https://kick.com/categories/games/rust' : 'https://www.twitch.tv/directory/category/rust';
       description = `🎁 **${translatedName}**\n⏱ ${drop.time_es || drop.time}\n🌍 Disponible en todos los canales participantes con drops.`;
     }
