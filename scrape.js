@@ -2,130 +2,131 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK;
+const STATE_FILE = 'state.json';
+const DROPS_FILE = 'drops.json';
+
+// Colores para los embeds de Discord
+const COLORS = {
+  TWITCH: 9502720,
+  KICK: 3066993,
+  GENERAL: 2003190,
+  HEADER: 13517355
+};
 
 /**
- * Traduce textos de los drops al español (incluye horas y minutos)
+ * Función de pausa para respetar Rate Limits de Discord
  */
-function translateText(text) {
-  if (!text) return '';
-  let translated = text;
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  translated = translated.replace(/General Drop/gi, 'Drop General');
-  translated = translated.replace(/Streamer Drop/gi, 'Drop de Streamer');
-  translated = translated.replace(/Exclusive/gi, 'Exclusivo');
-  translated = translated.replace(/Watch for/gi, 'Ver durante');
-  
-  // Traducción de unidades de tiempo
-  translated = translated.replace(/\b1\s*hours?\b/gi, '1 hora');
-  translated = translated.replace(/\b(\d+)\s*hours?\b/gi, '$1 horas');
-  translated = translated.replace(/\b1\s*hrs?\b/gi, '1 hora');
-  translated = translated.replace(/\b(\d+)\s*hrs?\b/gi, '$1 horas');
-  translated = translated.replace(/\b1\s*minutes?\b/gi, '1 minuto');
-  translated = translated.replace(/\b(\d+)\s*minutes?\b/gi, '$1 minutos');
-  translated = translated.replace(/\b1\s*mins?\b/gi, '1 minuto');
-  translated = translated.replace(/\b(\d+)\s*mins?\b/gi, '$1 mins');
+/**
+ * Traduce los nombres de los objetos del juego al español
+ */
+function translateItemName(name) {
+  if (!name) return 'Objeto Desconocido';
+  const dict = {
+    "ice pickaxe": "Pico de Hielo", "pickaxe": "Pico", "salvaged axe": "Hacha Chatarra",
+    "barbeque": "Barbacoa", "jackhammer": "Martillo Neumático", "hammer": "Martillo",
+    "crossbow": "Ballesta", "bow": "Arco", "assault rifle": "Rifle de Asalto",
+    "bolt action rifle": "Rifle de Cerrojo", "semi-automatic rifle": "Rifle Semiautomático",
+    "custom smg": "SMG Personalizada", "mp5": "MP5", "thompson": "Thompson",
+    "m249": "M249", "revolver": "Revólver", "m92 pistol": "Pistola M92",
+    "pump shotgun": "Escopeta de Corredera", "double barrel shotgun": "Escopeta de Doble Cañón",
+    "handmade shell": "Escopeta artesanal", "rocket launcher": "Lanzacohetes",
+    "waterpipe shotgun": "Escopeta de Tubería", "beancan grenade": "Granada Beancan",
+    "f1 grenade": "Granada F1", "smoke grenade": "Granada de Humo", "grenade": "Granada",
+    "sheet metal door": "Puerta de Chapa", "armored door": "Puerta Blindada",
+    "garage door": "Puerta de Garaje", "wooden door": "Puerta de Madera",
+    "large wood box": "Caja de Madera Grande", "small wood box": "Caja de Madera Pequeña",
+    "small box": "Caja Pequeña", "furnace": "Horno", "sleeping bag": "Saco de Dormir",
+    "tool cupboard": "Armario de Herramientas", "roadsign helmet": "Casco Roadsign",
+    "coffee can helmet": "Casco Lata de Café", "metal facemask": "Mascarilla Metálica",
+    "roadsign jacket": "Chaqueta Roadsign", "roadsign pants": "Pantalones Roadsign",
+    "roadsign kilt": "Falda Roadsign", "hoodie": "Sudadera", "cargo pants": "Pantalones Cargo",
+    "pants": "Pantalones", "boots": "Botas", "tactical gloves": "Guantes Tácticos",
+    "gloves": "Guantes", "metal chestplate": "Pechera HQ", "chest plate": "Placa de Pecho",
+    "facemask": "Mascarilla", "bandana": "Bandana", "balaclava": "Pasamontañas",
+    "beanie hat": "Gorro", "boonie hat": "Sombrero", "hazmat suit": "Hazmat",
+    "wetsuit": "Traje de Buceo", "backpack": "Mochila", "rock": "Roca",
+    "jacket": "Chaqueta", "auto turret": "Torreta", "salvaged sword": "Espada",
+    "locker": "Taquilla"
+  };
 
-  return translated.trim();
+  const lowerName = name.toLowerCase();
+  for (const [eng, esp] of Object.entries(dict)) {
+    if (lowerName.includes(eng)) return esp;
+  }
+  return name;
 }
 
 /**
- * Convierte cadenas de fechas en objetos Date válidos
+ * Traduce textos generales y duraciones
+ */
+function translateText(text) {
+  if (!text) return '';
+  return text
+    .replace(/General Drop/gi, 'Drop General')
+    .replace(/Streamer Drop/gi, 'Drop de Streamer')
+    .replace(/Exclusive/gi, 'Exclusivo')
+    .replace(/Watch for/gi, 'Ver durante')
+    .replace(/\b1\s*hours?\b/gi, '1 hora')
+    .replace(/\b(\d+)\s*hours?\b/gi, '$1 horas')
+    .replace(/\b1\s*hrs?\b/gi, '1 hora')
+    .replace(/\b(\d+)\s*hrs?\b/gi, '$1 horas')
+    .replace(/\b1\s*minutes?\b/gi, '1 minuto')
+    .replace(/\b(\d+)\s*minutes?\b/gi, '$1 minutos')
+    .replace(/\b1\s*mins?\b/gi, '1 minuto')
+    .replace(/\b(\d+)\s*mins?\b/gi, '$1 mins')
+    .trim();
+}
+
+/**
+ * Parsea y traduce las fechas del evento
  */
 function parseFacepunchDate(str) {
   if (!str) return null;
-
-  let cleaned = str
-    .replace(/(\d+)(st|nd|rd|th)/gi, '$1')
-    .replace(/\bat\b/gi, '')
-    .trim();
-
-  if (!/\b20\d\d\b/.test(cleaned)) {
-    cleaned += ` ${new Date().getFullYear()}`;
-  }
+  let cleaned = str.replace(/(\d+)(st|nd|rd|th)/gi, '$1').replace(/\bat\b/gi, '').trim();
+  if (!/\b20\d\d\b/.test(cleaned)) cleaned += ` ${new Date().getFullYear()}`;
 
   let d = new Date(cleaned);
   if (!isNaN(d.getTime())) return d;
 
   const match = cleaned.match(/(\d{1,2})\s+([a-zA-Z]+)\s*(\d{4})?\s*(\d{1,2}:\d{2})?/);
   if (match) {
-    const day = match[1];
-    const month = match[2];
-    const year = match[3] || new Date().getFullYear();
     const time = match[4] || '00:00';
-    d = new Date(`${month} ${day}, ${year} ${time}`);
+    d = new Date(`${match[2]} ${match[1]}, ${match[3] || new Date().getFullYear()} ${time}`);
     if (!isNaN(d.getTime())) return d;
   }
-
   return null;
 }
 
-/**
- * Traduce nombres de meses al español
- */
 function translateEventTime(timeStr) {
   if (!timeStr) return '';
   return timeStr
     .replace(/(\d+)(st|nd|rd|th)/gi, '$1')
-    .replace(/January/gi, 'enero')
-    .replace(/February/gi, 'febrero')
-    .replace(/March/gi, 'marzo')
-    .replace(/April/gi, 'abril')
-    .replace(/May/gi, 'mayo')
-    .replace(/June/gi, 'junio')
-    .replace(/July/gi, 'julio')
-    .replace(/August/gi, 'agosto')
-    .replace(/September/gi, 'septiembre')
-    .replace(/October/gi, 'octubre')
-    .replace(/November/gi, 'noviembre')
-    .replace(/December/gi, 'diciembre')
-    .replace(/\bat\b/gi, 'a las')
-    .replace(/\bto\b/gi, 'al')
-    .trim();
+    .replace(/January/gi, 'enero').replace(/February/gi, 'febrero').replace(/March/gi, 'marzo')
+    .replace(/April/gi, 'abril').replace(/May/gi, 'mayo').replace(/June/gi, 'junio')
+    .replace(/July/gi, 'julio').replace(/August/gi, 'agosto').replace(/September/gi, 'septiembre')
+    .replace(/October/gi, 'octubre').replace(/November/gi, 'noviembre').replace(/December/gi, 'diciembre')
+    .replace(/\bat\b/gi, 'a las').replace(/\bto\b/gi, 'al').trim();
 }
 
-/**
- * Procesa las fechas del evento (Inicio, Fin, Duración y Cuenta atrás)
- */
 function processEventDates(rawTime) {
-  if (!rawTime) {
-    return { start: 'Fecha no disponible', end: 'Fecha no disponible', duration: 'N/A', countdown: 'N/A' };
-  }
+  if (!rawTime) return { start: 'No disponible', end: 'No disponible', duration: 'N/A', countdown: 'N/A' };
 
-  // Separadores comunes entre fecha de inicio y fin
   const parts = rawTime.split(/—|–|-|\bto\b|\buntil\b|\n/i);
-  const startRaw = parts[0] ? parts[0].trim() : '';
-  const endRaw = parts[1] ? parts[1].trim() : '';
+  const startDate = parseFacepunchDate(parts[0]?.trim());
+  const endDate = parseFacepunchDate(parts[1]?.trim());
 
-  const startDate = parseFacepunchDate(startRaw);
-  const endDate = parseFacepunchDate(endRaw);
-
-  let startFormatted = translateEventTime(startRaw);
-  let endFormatted = translateEventTime(endRaw);
-  let durationStr = 'No calculable';
-  let countdownStr = 'No calculable';
+  let durationStr = 'No calculable', countdownStr = 'No calculable';
 
   if (startDate && endDate) {
-    const options = { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-
-    startFormatted = `${startDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
-    endFormatted = `${endDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
-
-    // Duración entre inicio y fin
     const durationMs = endDate.getTime() - startDate.getTime();
-    const durDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
-    const durHours = Math.floor((durationMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    durationStr = `${durDays} días y ${durHours} horas`;
+    durationStr = `${Math.floor(durationMs / 86400000)} días y ${Math.floor((durationMs % 86400000) / 3600000)} horas`;
 
-    // Estado / Cuenta atrás
-    const now = new Date();
-    const diffStartMs = startDate.getTime() - now.getTime();
-
+    const diffStartMs = startDate.getTime() - new Date().getTime();
     if (diffStartMs > 0) {
-      const cdDays = Math.floor(diffStartMs / (1000 * 60 * 60 * 24));
-      const cdHours = Math.floor((diffStartMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const cdMins = Math.floor((diffStartMs % (1000 * 60 * 60)) / (1000 * 60));
-      countdownStr = `Faltan ${cdDays} días, ${cdHours} horas y ${cdMins} minutos`;
-    } else if (now < endDate) {
+      countdownStr = `Faltan ${Math.floor(diffStartMs / 86400000)} días, ${Math.floor((diffStartMs % 86400000) / 3600000)} horas y ${Math.floor((diffStartMs % 3600000) / 60000)} minutos`;
+    } else if (new Date() < endDate) {
       countdownStr = '🔥 ¡El evento ya está activo!';
     } else {
       countdownStr = '🔴 El evento ha finalizado';
@@ -133,326 +134,187 @@ function processEventDates(rawTime) {
   }
 
   return {
-    start: startFormatted || 'Fecha no disponible',
-    end: endFormatted || 'Fecha no disponible',
-    duration: durationStr,
-    countdown: countdownStr
+    start: startDate ? `${startDate.toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' })} CEST` : translateEventTime(parts[0]),
+    end: endDate ? `${endDate.toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' })} CEST` : translateEventTime(parts[1]),
+    duration: durationStr, countdown: countdownStr
   };
 }
 
 /**
- * Extrae la cabecera del evento (Título, Banner PNG/JPG y Fechas completas)
+ * Scraper Universal (sirve para Twitch y Kick)
  */
-async function scrapeEventEmbed(page, defaultUrl) {
-  return await page.evaluate((url) => {
-    // 1. Título limpio (sin duplicaciones)
-    const titleEl = document.querySelector('.campaign-title, header h1, .event-title, .hero h1, h1');
-    let title = titleEl ? titleEl.innerText.trim() : 'Rust Drops';
-    title = title.split('\n')[0].trim(); // Previene títulos multilínea duplicados
-
-    // 2. Imagen PNG/JPG del evento
-    let imageUrl = '';
-    const allImgs = Array.from(document.querySelectorAll('img'));
-    const bannerImg = allImgs.find(img => {
-      const src = (img.src || '').toLowerCase();
-      return src.includes('files.facepunch.com') &&
-             !src.endsWith('.svg') &&
-             !src.includes('svg') &&
-             !src.includes('logo') &&
-             !src.includes('icon') &&
-             !src.includes('avatar') &&
-             !src.includes('marque');
-    });
-
-    if (bannerImg) {
-      imageUrl = bannerImg.src;
-    } else {
-      const metaOg = document.querySelector('meta[property="og:image"]')?.content || '';
-      if (metaOg && !metaOg.toLowerCase().endsWith('.svg') && !metaOg.toLowerCase().includes('svg')) {
-        imageUrl = metaOg;
-      }
-    }
-
-    // 3. Captura completa de fechas (Inicio y Fin)
-    let timeText = '';
-    const monthRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
-
-    // Buscar en contenedores principales de fechas sin recortar nodos hijos
-    const dateContainers = document.querySelectorAll('.dates, .campaign-dates, .event-dates, .header-dates, .dates-container, header .subtitle');
-    for (const el of dateContainers) {
-      const txt = el.innerText ? el.innerText.replace(/\s+/g, ' ').trim() : '';
-      if (monthRegex.test(txt) && /\d+/.test(txt)) {
-        timeText = txt;
-        break;
-      }
-    }
-
-    // Si las fechas están en elementos hijos separados, las detectamos y unimos
-    if (!timeText || !timeText.includes('—') && !timeText.includes('-') && !/to|until/i.test(timeText)) {
-      const leafElements = Array.from(document.querySelectorAll('header *, .campaign *, .hero *'))
-        .filter(el => el.children.length === 0 && monthRegex.test(el.innerText || ''));
-
-      if (leafElements.length >= 2) {
-        timeText = `${leafElements[0].innerText.trim()} — ${leafElements[1].innerText.trim()}`;
-      } else if (leafElements.length === 1 && leafElements[0].parentElement) {
-        const parentTxt = leafElements[0].parentElement.innerText.replace(/\s+/g, ' ').trim();
-        if (monthRegex.test(parentTxt)) {
-          timeText = parentTxt;
-        }
-      }
-    }
-
-    return {
-      title,
-      url: 'https://twitch.facepunch.com/',
-      image: imageUrl,
-      time: timeText
-    };
-  }, defaultUrl);
-}
-
-/**
- * Scraper para Twitch Drops
- */
-async function scrapeTwitch() {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-
+async function scrapePlatform(context, url) {
+  const page = await context.newPage();
   try {
-    console.log('🔍 Extrayendo información de Twitch Drops...');
-    await page.goto('https://twitch.facepunch.com/', { waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
+    console.log(`🔍 Extrayendo información de: ${url}`);
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
     await page.waitForSelector('.drop-box', { timeout: 15000 }).catch(() => null);
 
-    const embed = await scrapeEventEmbed(page, 'https://twitch.facepunch.com/');
+    const embed = await page.evaluate((baseUrl) => {
+      let title = (document.querySelector('.campaign-title, header h1, .event-title, h1')?.innerText.trim() || 'Rust Drops').split('\n')[0];
+      
+      let imageUrl = Array.from(document.querySelectorAll('img')).find(img => {
+        const src = (img.src || '').toLowerCase();
+        return src.includes('files.facepunch.com') && !src.includes('svg') && !src.includes('logo') && !src.includes('icon');
+      })?.src || document.querySelector('meta[property="og:image"]')?.content || '';
 
-    const drops = await page.$$eval('.drop-box', boxes => {
-      return boxes.map(box => {
-        const streamerNameRaw = box.querySelector('.streamer-name, .streamer-info span, .streamer-title')?.innerText.trim() || '';
-        const name = box.querySelector('.drop-type, .drop-name')?.innerText.trim() || 'Unknown Drop';
-        const time = box.querySelector('.drop-time span, .drop-time')?.innerText.trim() || 'Unknown';
-        const img = box.querySelector('video img')?.src || box.querySelector('img.drop-image, img')?.src || '';
-        const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
-
-        // Deduplicación estricta de streamers
-        const streamersMap = new Map();
-        box.querySelectorAll('a[href*="twitch.tv"]').forEach(a => {
-          const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
-          const cleanKey = streamerName.toLowerCase();
-          if (cleanKey && !streamersMap.has(cleanKey)) {
-            streamersMap.set(cleanKey, {
-              name: streamerName,
-              url: a.href,
-              avatar: a.querySelector('img')?.src || ''
-            });
-          }
-        });
-
-        const streamers = Array.from(streamersMap.values());
-        const dropLink = box.querySelector('a')?.href || '';
-        const id = dropLink || img || name;
-        const type = isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo';
-
-        return { id, name, time, img, streamers, type };
-      });
-    });
-
-    const translatedDrops = drops.map(drop => ({
-      ...drop,
-      name_es: translateText(drop.name),
-      time_es: translateText(drop.time),
-      type_es: translateText(drop.type)
-    }));
-
-    return { embed, drops: translatedDrops };
-  } catch (err) {
-    console.error('❌ Error scraping Twitch:', err);
-    return { embed: null, drops: [] };
-  } finally {
-    await browser.close();
-  }
-}
-
-/**
- * Scraper para Kick Drops
- */
-async function scrapeKick() {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-
-  try {
-    console.log('🔍 Extrayendo información de Kick Drops...');
-    await page.goto('https://kick.facepunch.com/', { waitUntil: 'networkidle', timeout: 30000 }).catch(() => null);
-    await page.waitForSelector('.drop-box', { timeout: 8000 }).catch(() => {
-      console.log('⚠️ No se encontraron tarjetas de drops en Kick.');
-    });
-
-    const embed = await scrapeEventEmbed(page, 'https://kick.facepunch.com/');
-
-    const drops = await page.$$eval('.drop-box', boxes => {
-      return boxes.map(box => {
-        const streamerNameRaw = box.querySelector('.streamer-name, .streamer-info span, .streamer-title')?.innerText.trim() || '';
-        const name = box.querySelector('.drop-type, .drop-name')?.innerText.trim() || 'Unknown Drop';
-        const time = box.querySelector('.drop-time span, .drop-time')?.innerText.trim() || 'Unknown';
-        const img = box.querySelector('video img')?.src || box.querySelector('img.drop-image, img')?.src || '';
-        const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
-
-        // Deduplicación estricta de streamers
-        const streamersMap = new Map();
-        box.querySelectorAll('a[href*="kick.com"]').forEach(a => {
-          const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
-          const cleanKey = streamerName.toLowerCase();
-          if (cleanKey && !streamersMap.has(cleanKey)) {
-            streamersMap.set(cleanKey, {
-              name: streamerName,
-              url: a.href,
-              avatar: a.querySelector('img')?.src || ''
-            });
-          }
-        });
-
-        const streamers = Array.from(streamersMap.values());
-        const dropLink = box.querySelector('a')?.href || '';
-        const id = dropLink || img || name;
-        const type = isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo';
-
-        return { id, name, time, img, streamers, type };
-      });
-    });
-
-    const translatedDrops = drops.map(drop => ({
-      ...drop,
-      name_es: translateText(drop.name),
-      time_es: translateText(drop.time),
-      type_es: translateText(drop.type)
-    }));
-
-    return { embed, drops: translatedDrops };
-  } catch (err) {
-    console.error('❌ Error scraping Kick:', err);
-    return { embed: null, drops: [] };
-  } finally {
-    await browser.close();
-  }
-}
-
-/**
- * Envío del Embed a Discord
- */
-async function sendDiscordEventEmbed(embedData, dateDetails) {
-  if (!DISCORD_WEBHOOK_URL) {
-    console.log('⚠️ No se ha configurado DISCORD_WEBHOOK.');
-    return;
-  }
-
-  const description = [
-    `🛫 **Fecha de inicio:** ${dateDetails.start}`,
-    `🛬 **Fecha final:** ${dateDetails.end}`,
-    `⏳ **Duración del evento:** ${dateDetails.duration}`,
-    `⏰ **Estado / Cuenta atrás:** ${dateDetails.countdown}`
-  ].join('\n\n');
-
-  const discordPayload = {
-    embeds: [
-      {
-        title: embedData.title,
-        url: embedData.url,
-        description: description,
-        color: 13517355,
-        image: embedData.image ? { url: embedData.image } : undefined,
-        footer: {
-          text: 'Rust Facepunch Drops Event'
-        }
+      let timeText = '';
+      const monthRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
+      const dateContainers = document.querySelectorAll('.dates, .campaign-dates, header .subtitle');
+      for (const el of dateContainers) {
+        const txt = el.innerText ? el.innerText.replace(/\s+/g, ' ').trim() : '';
+        if (monthRegex.test(txt) && /\d+/.test(txt)) { timeText = txt; break; }
       }
-    ]
-  };
 
+      return { title, url: baseUrl, image: imageUrl, time: timeText };
+    }, url);
+
+    const drops = await page.$$eval('.drop-box', (boxes, isKick) => {
+      return boxes.map(box => {
+        const streamerNameRaw = box.querySelector('.streamer-name, .streamer-title')?.innerText.trim() || '';
+        const isGeneral = streamerNameRaw.toLowerCase().includes('general drop') || streamerNameRaw === '';
+        const name = box.querySelector('.drop-type, .drop-name')?.innerText.trim() || 'Unknown Drop';
+        const img = box.querySelector('video img')?.src || box.querySelector('img.drop-image, img')?.src || '';
+
+        const streamersMap = new Map();
+        box.querySelectorAll(`a[href*="${isKick ? 'kick.com' : 'twitch.tv'}"]`).forEach(a => {
+          const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
+          if (!streamersMap.has(streamerName.toLowerCase())) {
+            streamersMap.set(streamerName.toLowerCase(), { name: streamerName, url: a.href });
+          }
+        });
+
+        const streamers = Array.from(streamersMap.values());
+        return {
+          id: box.querySelector('a')?.href || img || name,
+          name,
+          time: box.querySelector('.drop-time')?.innerText.trim() || 'Unknown',
+          img,
+          streamers,
+          type: isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo'
+        };
+      });
+    }, url.includes('kick'));
+
+    return { 
+      embed, 
+      drops: drops.map(d => ({ ...d, name_es: translateText(d.name), time_es: translateText(d.time), type_es: translateText(d.type) })) 
+    };
+  } catch (err) {
+    console.error(`❌ Error scraping ${url}:`, err);
+    return { embed: null, drops: [] };
+  } finally {
+    await page.close();
+  }
+}
+
+/**
+ * Motor de envíos a Discord (Embeds Dinámicos)
+ */
+async function sendDiscordWebhook(payload) {
+  if (!DISCORD_WEBHOOK_URL) return;
   try {
-    const response = await fetch(DISCORD_WEBHOOK_URL, {
+    await fetch(DISCORD_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(discordPayload)
+      body: JSON.stringify(payload)
     });
-
-    if (response.ok) {
-      console.log('🚀 Embed del evento enviado con éxito a Discord.');
-    } else {
-      console.error(`❌ Error Discord: ${response.status} ${response.statusText}`);
-    }
   } catch (error) {
     console.error('❌ Error enviando a Discord:', error);
   }
 }
 
-// Ejecución principal
+/**
+ * Procesa y envía nuevos Drops comparando el estado actual
+ */
+async function processAndSendDrops(platformName, currentDrops, previousDrops, color) {
+  const previousIds = new Set(previousDrops.map(d => d.id));
+  const newDrops = currentDrops.filter(d => !previousIds.has(d.id));
+
+  if (newDrops.length === 0) return currentDrops;
+
+  console.log(`🚀 Enviando ${newDrops.length} nuevos drops de ${platformName} a Discord...`);
+
+  for (const drop of newDrops) {
+    const isExclusivo = drop.streamers.length > 0;
+    const translatedName = translateItemName(drop.name);
+    
+    let title, description, url;
+    if (isExclusivo) {
+      title = `⭐ Drop Exclusivo (${platformName})`;
+      url = drop.streamers[0].url;
+      const strLinks = drop.streamers.map(s => `[${s.name}](${s.url})`).join(", ");
+      description = `🎁 **${translatedName}**\n⏱ ${drop.time_es || drop.time}\n🎮 ${strLinks}\n📺 Plataforma: ${platformName}`;
+    } else {
+      title = `🌍 Drop General (${platformName})`;
+      url = platformName === 'Kick' ? 'https://kick.com/categories/games/rust' : 'https://www.twitch.tv/directory/category/rust';
+      description = `🎁 **${translatedName}**\n⏱ ${drop.time_es || drop.time}\n🌍 Disponible en todos los canales participantes con drops.`;
+    }
+
+    await sendDiscordWebhook({
+      embeds: [{
+        title, url, description, color,
+        thumbnail: { url: drop.img }
+      }]
+    });
+    await delay(1500); // Evitar Rate Limit de Discord
+  }
+
+  return currentDrops;
+}
+
+// ========================
+// EJECUCIÓN PRINCIPAL
+// ========================
 (async () => {
-  const twitchData = await scrapeTwitch();
-  const kickData = await scrapeKick();
+  // 1. Cargar Estado Anterior
+  let state = { event_title: '', last_header_sent: '', twitch: { drops: [] }, kick: { drops: [] } };
+  if (fs.existsSync(STATE_FILE)) {
+    try { state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } 
+    catch (e) { console.error('⚠️ Aviso: No se pudo leer state.json, iniciando limpio.'); }
+  }
 
-  const embedHeader = twitchData.embed || kickData.embed || {
-    title: 'Rust Drops',
-    url: 'https://twitch.facepunch.com/',
-    image: '',
-    time: ''
-  };
+  // 2. Extraer Datos (Navegador Único)
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+  const twitchData = await scrapePlatform(context, 'https://twitch.facepunch.com/');
+  const kickData = await scrapePlatform(context, 'https://kick.com/rust'); // URL actualizada de Kick si corresponde
+  await browser.close();
 
+  const embedHeader = twitchData.embed || kickData.embed || { title: 'Rust Drops', url: 'https://twitch.facepunch.com/', image: '', time: '' };
   const dateDetails = processEventDates(embedHeader.time);
-
-  // 1. Leer state.json para comprobar el último envío
-  let state = {};
-  if (fs.existsSync('state.json')) {
-    try {
-      state = JSON.parse(fs.readFileSync('state.json', 'utf8'));
-    } catch (err) {
-      console.error('⚠️ No se pudo leer state.json:', err.message);
-    }
-  }
-
-  // 2. Obtener la fecha de hoy (formato YYYY-MM-DD)
   const todayStr = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
-  let lastHeaderSent = state.last_header_sent || '';
 
-  // 3. Enviar a Discord SOLO si no se ha enviado hoy
-  if (lastHeaderSent !== todayStr) {
-    await sendDiscordEventEmbed(embedHeader, dateDetails);
-    lastHeaderSent = todayStr;
-  } else {
-    console.log('ℹ️ El embed del evento ya se envió hoy. Omitiendo envío a Discord.');
+  // 3. Enviar Cabecera de Evento (Máximo 1 vez al día)
+  if (state.last_header_sent !== todayStr && embedHeader.title) {
+    console.log(`📢 Enviando cabecera del evento: ${embedHeader.title}`);
+    await sendDiscordWebhook({
+      embeds: [{
+        title: embedHeader.title,
+        url: embedHeader.url,
+        description: `🛫 **Fecha de inicio:** ${dateDetails.start}\n🛬 **Fecha final:** ${dateDetails.end}\n⏳ **Duración del evento:** ${dateDetails.duration}\n⏰ **Estado / Cuenta atrás:** ${dateDetails.countdown}`,
+        color: COLORS.HEADER,
+        image: embedHeader.image ? { url: embedHeader.image } : undefined,
+        footer: { text: 'Rust Facepunch Drops Event' }
+      }]
+    });
+    state.last_header_sent = todayStr;
+    await delay(2000);
   }
 
-  // 4. Guardar last_header_sent en jsonResult para sincronizarlo con state.json
-  const jsonResult = {
-    last_header_sent: lastHeaderSent,
-    embed: {
-      title: embedHeader.title,
-      url: 'https://twitch.facepunch.com/',
-      image: embedHeader.image,
-      time: embedHeader.time,
-      time_es: translateEventTime(embedHeader.time),
-      time_details: dateDetails
-    },
-    twitch: {
-      exclusive: twitchData.drops.filter(d => d.type === 'Exclusivo'),
-      general: twitchData.drops.filter(d => d.type === 'General'),
-      drops: twitchData.drops,
-      fail: twitchData.drops.length === 0 ? 1 : 0,
-      hero: twitchData.embed
-    },
-    kick: {
-      exclusive: kickData.drops.filter(d => d.type === 'Exclusivo'),
-      general: kickData.drops.filter(d => d.type === 'General'),
-      drops: kickData.drops,
-      fail: kickData.drops.length === 0 ? 1 : 0,
-      hero: kickData.embed
-    }
-  };
+  // 4. Procesar y Enviar Drops Nuevos a Discord
+  state.twitch.drops = await processAndSendDrops('Twitch', twitchData.drops, state.twitch.drops || [], COLORS.TWITCH);
+  state.kick.drops = await processAndSendDrops('Kick', kickData.drops, state.kick.drops || [], COLORS.KICK);
+  state.event_title = embedHeader.title;
 
-  fs.writeFileSync('drops.json', JSON.stringify(jsonResult, null, 2));
+  // 5. Guardar Archivos Limpios
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  fs.writeFileSync(DROPS_FILE, JSON.stringify({
+    last_header_sent: state.last_header_sent,
+    embed: { ...embedHeader, time_es: translateEventTime(embedHeader.time), time_details: dateDetails },
+    twitch: state.twitch,
+    kick: state.kick
+  }, null, 2));
 
-  console.log(`\n✅ Scraping completado:`);
-  console.log(`📌 Título: ${jsonResult.embed.title}`);
-  console.log(`🖼️  Imagen: ${jsonResult.embed.image}`);
-  console.log(`🛫 Inicio: ${dateDetails.start}`);
-  console.log(`🛬 Fin: ${dateDetails.end}`);
-  console.log(`⏳ Duración: ${dateDetails.duration}`);
-  console.log(`⏰ Estado: ${dateDetails.countdown}`);
+  console.log(`\n✅ Ejecución finalizada correctamente.`);
 })();
