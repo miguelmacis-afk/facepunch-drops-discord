@@ -10,7 +10,7 @@
       "start": "24 de septiembre de 2026 a las 21:00 CEST",
       "end": "5 de octubre de 2026 a las 01:59 CEST",
       "duration": "10 días y 4 horas",
-      "countdown": "Faltan 2 días, 6 horas y 25 minutos"
+      "countdown": "Faltan 2 días, 1 horas y 43 minutos"
     }
   },
   "twitch": {
@@ -86,6 +86,29 @@
         "name_es": "HOODIE",
         "time_es": "6 horas",
         "type_es": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/LEDOO",
+        "name": "VAGABOND JACKET",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/jacket.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "LEDOO",
+            "url": "https://www.twitch.tv/LEDOO",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png"
+          },
+          {
+            "name": "FANCYORB",
+            "url": "https://www.twitch.tv/FancyOrb",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/872cb545-fb66-43f4-b46c-93a3699de808-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "VAGABOND JACKET",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
       },
       {
         "id": "https://www.twitch.tv/GEEGA",
@@ -361,29 +384,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "METAL CHESTPLATE",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/LEDOO",
-        "name": "VAGABOND JACKET",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/jacket.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "LEDOO",
-            "url": "https://www.twitch.tv/LEDOO",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png"
-          },
-          {
-            "name": "FANCYORB",
-            "url": "https://www.twitch.tv/FancyOrb",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/872cb545-fb66-43f4-b46c-93a3699de808-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "VAGABOND JACKET",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
