@@ -235,6 +235,70 @@
         "type_es": "Exclusivo"
       },
       {
+        "id": "https://www.twitch.tv/Foolish",
+        "name": "GARAGE DOOR",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "FOOLISH",
+            "url": "https://www.twitch.tv/Foolish",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "GARAGE DOOR",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/LEDOO",
+        "name": "VAGABOND JACKET",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/jacket.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "LEDOO",
+            "url": "https://www.twitch.tv/LEDOO",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png"
+          },
+          {
+            "name": "FANCYORB",
+            "url": "https://www.twitch.tv/FancyOrb",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/872cb545-fb66-43f4-b46c-93a3699de808-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "VAGABOND JACKET",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/itsRyanHiga",
+        "name": "TACTICAL GLOVES",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/gloves.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/9948c83e-5735-48f7-91c6-afb71827b498-profile_image-300x300.jpeg",
+        "streamers": [
+          {
+            "name": "ITSRYANHIGA",
+            "url": "https://www.twitch.tv/itsRyanHiga",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/9948c83e-5735-48f7-91c6-afb71827b498-profile_image-300x300.jpeg"
+          },
+          {
+            "name": "WELYN",
+            "url": "https://www.twitch.tv/Welyn",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/83d06b9c-ef42-4012-8886-20a3d1316239-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "TACTICAL GLOVES",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
         "id": "https://www.twitch.tv/ironmouse",
         "name": "LARGE WOOD BOX",
         "time": "1 HOUR",
@@ -267,24 +331,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "SALVAGED SWORD",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/Foolish",
-        "name": "GARAGE DOOR",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "FOOLISH",
-            "url": "https://www.twitch.tv/Foolish",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "GARAGE DOOR",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
@@ -349,52 +395,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "METAL CHESTPLATE",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/LEDOO",
-        "name": "VAGABOND JACKET",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/jacket.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "LEDOO",
-            "url": "https://www.twitch.tv/LEDOO",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/041b78dd-9295-4e51-9cb6-d46f40410ac7-profile_image-300x300.png"
-          },
-          {
-            "name": "FANCYORB",
-            "url": "https://www.twitch.tv/FancyOrb",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/872cb545-fb66-43f4-b46c-93a3699de808-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "VAGABOND JACKET",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/itsRyanHiga",
-        "name": "TACTICAL GLOVES",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/gloves.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/9948c83e-5735-48f7-91c6-afb71827b498-profile_image-300x300.jpeg",
-        "streamers": [
-          {
-            "name": "ITSRYANHIGA",
-            "url": "https://www.twitch.tv/itsRyanHiga",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/9948c83e-5735-48f7-91c6-afb71827b498-profile_image-300x300.jpeg"
-          },
-          {
-            "name": "WELYN",
-            "url": "https://www.twitch.tv/Welyn",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/83d06b9c-ef42-4012-8886-20a3d1316239-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "TACTICAL GLOVES",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       }
