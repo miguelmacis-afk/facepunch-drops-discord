@@ -134,24 +134,6 @@
         "type_es": "Exclusivo"
       },
       {
-        "id": "https://www.twitch.tv/DisguisedToast",
-        "name": "SEMI-AUTOMATIC RIFLE",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/semi-auto.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "DISGUISEDTOAST",
-            "url": "https://www.twitch.tv/DisguisedToast",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "SEMI-AUTOMATIC RIFLE",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
         "id": "https://www.twitch.tv/peterpark",
         "name": "DOUBLE BARREL SHOTGUN",
         "time": "1 HOUR",
@@ -371,6 +353,24 @@
         ],
         "type": "Exclusivo",
         "name_es": "TACTICAL GLOVES",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/DisguisedToast",
+        "name": "SEMI-AUTOMATIC RIFLE",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/semi-auto.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "DISGUISEDTOAST",
+            "url": "https://www.twitch.tv/DisguisedToast",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "SEMI-AUTOMATIC RIFLE",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
