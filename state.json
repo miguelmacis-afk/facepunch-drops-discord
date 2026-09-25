@@ -76,6 +76,29 @@
         "type_es": "General"
       },
       {
+        "id": "https://www.twitch.tv/GEEGA",
+        "name": "ROCKET LAUNCHER",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/rocket-launcher.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "GEEGA",
+            "url": "https://www.twitch.tv/GEEGA",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png"
+          },
+          {
+            "name": "BLOOPRINT",
+            "url": "https://www.twitch.tv/Blooprint",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ac654631-14fe-45a9-aa11-b3f62915fc5e-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "ROCKET LAUNCHER",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
         "id": "https://www.twitch.tv/hJune",
         "name": "ASSAULT RIFLE",
         "time": "1 HOUR",
@@ -117,6 +140,29 @@
         "type_es": "Exclusivo"
       },
       {
+        "id": "https://www.twitch.tv/fuslie",
+        "name": "BOONIE HAT",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/boonie-hat.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "FUSLIE",
+            "url": "https://www.twitch.tv/fuslie",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png"
+          },
+          {
+            "name": "SVEN",
+            "url": "https://www.twitch.tv/Sven",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/20f936dc-4db1-4470-b6c3-b99eaafaa39d-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "BOONIE HAT",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
         "id": "https://www.twitch.tv/Abe",
         "name": "SMALL BACKPACK",
         "time": "1 HOUR",
@@ -149,6 +195,24 @@
         ],
         "type": "Exclusivo",
         "name_es": "WOODEN DOOR",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/Foolish",
+        "name": "GARAGE DOOR",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "FOOLISH",
+            "url": "https://www.twitch.tv/Foolish",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "GARAGE DOOR",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
@@ -222,29 +286,6 @@
         "type_es": "Exclusivo"
       },
       {
-        "id": "https://www.twitch.tv/GEEGA",
-        "name": "ROCKET LAUNCHER",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/rocket-launcher.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "GEEGA",
-            "url": "https://www.twitch.tv/GEEGA",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png"
-          },
-          {
-            "name": "BLOOPRINT",
-            "url": "https://www.twitch.tv/Blooprint",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ac654631-14fe-45a9-aa11-b3f62915fc5e-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "ROCKET LAUNCHER",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
         "id": "https://www.twitch.tv/DisguisedToast",
         "name": "SEMI-AUTOMATIC RIFLE",
         "time": "1 HOUR",
@@ -259,29 +300,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "SEMI-AUTOMATIC RIFLE",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/fuslie",
-        "name": "BOONIE HAT",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/boonie-hat.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "FUSLIE",
-            "url": "https://www.twitch.tv/fuslie",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png"
-          },
-          {
-            "name": "SVEN",
-            "url": "https://www.twitch.tv/Sven",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/20f936dc-4db1-4470-b6c3-b99eaafaa39d-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "BOONIE HAT",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
@@ -336,24 +354,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "SALVAGED SWORD",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/Foolish",
-        "name": "GARAGE DOOR",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "FOOLISH",
-            "url": "https://www.twitch.tv/Foolish",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/66e83125-195e-4431-bde8-89ac425a9038-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "GARAGE DOOR",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
