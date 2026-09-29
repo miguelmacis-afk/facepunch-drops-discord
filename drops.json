@@ -193,6 +193,24 @@
         "type_es": "Exclusivo"
       },
       {
+        "id": "https://www.twitch.tv/willneff",
+        "name": "SALVAGED SWORD",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/sword.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/0526935c-5783-4590-8dc1-16445842633d-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "WILLNEFF",
+            "url": "https://www.twitch.tv/willneff",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/0526935c-5783-4590-8dc1-16445842633d-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "SALVAGED SWORD",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
         "id": "https://www.twitch.tv/Foolish",
         "name": "GARAGE DOOR",
         "time": "1 HOUR",
@@ -389,24 +407,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "LARGE WOOD BOX",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/willneff",
-        "name": "SALVAGED SWORD",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/sword.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/0526935c-5783-4590-8dc1-16445842633d-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "WILLNEFF",
-            "url": "https://www.twitch.tv/willneff",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/0526935c-5783-4590-8dc1-16445842633d-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "SALVAGED SWORD",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       }
