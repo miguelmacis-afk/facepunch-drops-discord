@@ -1,6 +1,6 @@
 {
   "event_title": "Rust Isles",
-  "last_header_sent": "1/10/2026",
+  "last_header_sent": "2/10/2026",
   "twitch": {
     "drops": [
       {
@@ -76,6 +76,93 @@
         "type_es": "General"
       },
       {
+        "id": "https://www.twitch.tv/GEEGA",
+        "name": "ROCKET LAUNCHER",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/rocket-launcher.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "GEEGA",
+            "url": "https://www.twitch.tv/GEEGA",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png"
+          },
+          {
+            "name": "BLOOPRINT",
+            "url": "https://www.twitch.tv/Blooprint",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ac654631-14fe-45a9-aa11-b3f62915fc5e-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "ROCKET LAUNCHER",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/hJune",
+        "name": "ASSAULT RIFLE",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/ak.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/7610c39060476845-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "HJUNE",
+            "url": "https://www.twitch.tv/hJune",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/7610c39060476845-profile_image-300x300.png"
+          },
+          {
+            "name": "HUTNIK",
+            "url": "https://www.twitch.tv/Hutnik",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/27613a46-8c05-4e1c-8f48-97728d8d1943-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "ASSAULT RIFLE",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/DisguisedToast",
+        "name": "SEMI-AUTOMATIC RIFLE",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/semi-auto.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "DISGUISEDTOAST",
+            "url": "https://www.twitch.tv/DisguisedToast",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "SEMI-AUTOMATIC RIFLE",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/fuslie",
+        "name": "BOONIE HAT",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/boonie-hat.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "FUSLIE",
+            "url": "https://www.twitch.tv/fuslie",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png"
+          },
+          {
+            "name": "SVEN",
+            "url": "https://www.twitch.tv/Sven",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/20f936dc-4db1-4470-b6c3-b99eaafaa39d-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "BOONIE HAT",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
         "id": "https://www.twitch.tv/Abe",
         "name": "SMALL BACKPACK",
         "time": "1 HOUR",
@@ -117,6 +204,24 @@
         "type_es": "Exclusivo"
       },
       {
+        "id": "https://www.twitch.tv/xChocoBars",
+        "name": "WOODEN DOOR",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/wooden-door.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/26a16ad4-a927-494d-8ade-d6d09ece4a79-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "XCHOCOBARS",
+            "url": "https://www.twitch.tv/xChocoBars",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/26a16ad4-a927-494d-8ade-d6d09ece4a79-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "WOODEN DOOR",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
         "id": "https://www.twitch.tv/willneff",
         "name": "SALVAGED SWORD",
         "time": "1 HOUR",
@@ -136,6 +241,70 @@
         ],
         "type": "Exclusivo",
         "name_es": "SALVAGED SWORD",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/Mammoth",
+        "name": "GARAGE DOOR",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/067ab7b5-09cd-4aee-b24e-d5770dd28948-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "MAMMOTH",
+            "url": "https://www.twitch.tv/Mammoth",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/067ab7b5-09cd-4aee-b24e-d5770dd28948-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "GARAGE DOOR",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/HeyYouVideoGame",
+        "name": "LOCKER",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/locker.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "HEYYOUVIDEOGAME",
+            "url": "https://www.twitch.tv/HeyYouVideoGame",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png"
+          },
+          {
+            "name": "DAKKIIN",
+            "url": "https://www.twitch.tv/Dakkiin",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/268c26b3-4f5f-4889-99f5-257f8dbaac1b-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "LOCKER",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/CYR",
+        "name": "METAL FACEMASK",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/facemask.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/41b88ab3-4624-4054-a60a-464ecb49af24-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "CYR",
+            "url": "https://www.twitch.tv/CYR",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/41b88ab3-4624-4054-a60a-464ecb49af24-profile_image-300x300.png"
+          },
+          {
+            "name": "MRWOBBLESTWITCH",
+            "url": "https://www.twitch.tv/mrwobblestwitch",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ed414c0a-e3e7-4f78-aa7f-37bc6ed319fe-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "METAL FACEMASK",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
@@ -209,70 +378,6 @@
         "type_es": "Exclusivo"
       },
       {
-        "id": "https://www.twitch.tv/GEEGA",
-        "name": "ROCKET LAUNCHER",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/rocket-launcher.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "GEEGA",
-            "url": "https://www.twitch.tv/GEEGA",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png"
-          },
-          {
-            "name": "BLOOPRINT",
-            "url": "https://www.twitch.tv/Blooprint",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ac654631-14fe-45a9-aa11-b3f62915fc5e-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "ROCKET LAUNCHER",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/hJune",
-        "name": "ASSAULT RIFLE",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/ak.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/7610c39060476845-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "HJUNE",
-            "url": "https://www.twitch.tv/hJune",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/7610c39060476845-profile_image-300x300.png"
-          },
-          {
-            "name": "HUTNIK",
-            "url": "https://www.twitch.tv/Hutnik",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/27613a46-8c05-4e1c-8f48-97728d8d1943-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "ASSAULT RIFLE",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/DisguisedToast",
-        "name": "SEMI-AUTOMATIC RIFLE",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/semi-auto.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "DISGUISEDTOAST",
-            "url": "https://www.twitch.tv/DisguisedToast",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/875051f0-fd79-409f-bd1c-5a1eac2f7684-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "SEMI-AUTOMATIC RIFLE",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
         "id": "https://www.twitch.tv/peterpark",
         "name": "DOUBLE BARREL SHOTGUN",
         "time": "1 HOUR",
@@ -291,47 +396,6 @@
         "type_es": "Exclusivo"
       },
       {
-        "id": "https://www.twitch.tv/fuslie",
-        "name": "BOONIE HAT",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/boonie-hat.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "FUSLIE",
-            "url": "https://www.twitch.tv/fuslie",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/01446d6a-1841-465f-9664-d92b8704b870-profile_image-300x300.png"
-          },
-          {
-            "name": "SVEN",
-            "url": "https://www.twitch.tv/Sven",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/20f936dc-4db1-4470-b6c3-b99eaafaa39d-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "BOONIE HAT",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/xChocoBars",
-        "name": "WOODEN DOOR",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/wooden-door.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/26a16ad4-a927-494d-8ade-d6d09ece4a79-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "XCHOCOBARS",
-            "url": "https://www.twitch.tv/xChocoBars",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/26a16ad4-a927-494d-8ade-d6d09ece4a79-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "WOODEN DOOR",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
         "id": "https://www.twitch.tv/ironmouse",
         "name": "LARGE WOOD BOX",
         "time": "1 HOUR",
@@ -346,70 +410,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "LARGE WOOD BOX",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/Mammoth",
-        "name": "GARAGE DOOR",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/067ab7b5-09cd-4aee-b24e-d5770dd28948-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "MAMMOTH",
-            "url": "https://www.twitch.tv/Mammoth",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/067ab7b5-09cd-4aee-b24e-d5770dd28948-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "GARAGE DOOR",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/HeyYouVideoGame",
-        "name": "LOCKER",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/locker.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "HEYYOUVIDEOGAME",
-            "url": "https://www.twitch.tv/HeyYouVideoGame",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png"
-          },
-          {
-            "name": "DAKKIIN",
-            "url": "https://www.twitch.tv/Dakkiin",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/268c26b3-4f5f-4889-99f5-257f8dbaac1b-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "LOCKER",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/CYR",
-        "name": "METAL FACEMASK",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/facemask.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/41b88ab3-4624-4054-a60a-464ecb49af24-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "CYR",
-            "url": "https://www.twitch.tv/CYR",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/41b88ab3-4624-4054-a60a-464ecb49af24-profile_image-300x300.png"
-          },
-          {
-            "name": "MRWOBBLESTWITCH",
-            "url": "https://www.twitch.tv/mrwobblestwitch",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ed414c0a-e3e7-4f78-aa7f-37bc6ed319fe-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "METAL FACEMASK",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       }
