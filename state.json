@@ -76,29 +76,6 @@
         "type_es": "General"
       },
       {
-        "id": "https://www.twitch.tv/GEEGA",
-        "name": "ROCKET LAUNCHER",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/rocket-launcher.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "GEEGA",
-            "url": "https://www.twitch.tv/GEEGA",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png"
-          },
-          {
-            "name": "BLOOPRINT",
-            "url": "https://www.twitch.tv/Blooprint",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ac654631-14fe-45a9-aa11-b3f62915fc5e-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "ROCKET LAUNCHER",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
         "id": "https://www.twitch.tv/hJune",
         "name": "ASSAULT RIFLE",
         "time": "1 HOUR",
@@ -118,6 +95,24 @@
         ],
         "type": "Exclusivo",
         "name_es": "ASSAULT RIFLE",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/peterpark",
+        "name": "DOUBLE BARREL SHOTGUN",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/dbs.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/6949420f-ce2c-4b7d-bae0-282c707592db-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "PETERPARK",
+            "url": "https://www.twitch.tv/peterpark",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/6949420f-ce2c-4b7d-bae0-282c707592db-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "DOUBLE BARREL SHOTGUN",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
@@ -186,47 +181,6 @@
         "type_es": "Exclusivo"
       },
       {
-        "id": "https://www.twitch.tv/Mammoth",
-        "name": "GARAGE DOOR",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/067ab7b5-09cd-4aee-b24e-d5770dd28948-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "MAMMOTH",
-            "url": "https://www.twitch.tv/Mammoth",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/067ab7b5-09cd-4aee-b24e-d5770dd28948-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "GARAGE DOOR",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/HeyYouVideoGame",
-        "name": "LOCKER",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/locker.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "HEYYOUVIDEOGAME",
-            "url": "https://www.twitch.tv/HeyYouVideoGame",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png"
-          },
-          {
-            "name": "DAKKIIN",
-            "url": "https://www.twitch.tv/Dakkiin",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/268c26b3-4f5f-4889-99f5-257f8dbaac1b-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "LOCKER",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
         "id": "https://www.twitch.tv/CYR",
         "name": "METAL FACEMASK",
         "time": "1 HOUR",
@@ -246,29 +200,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "METAL FACEMASK",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/aceu",
-        "name": "METAL CHESTPLATE",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/chest-plate.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/df7b9ae8-926f-4a27-a3e2-fd151574b078-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "ACEU",
-            "url": "https://www.twitch.tv/aceu",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/df7b9ae8-926f-4a27-a3e2-fd151574b078-profile_image-300x300.png"
-          },
-          {
-            "name": "ZCHUM",
-            "url": "https://www.twitch.tv/ZChum",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/65cfe27c-2319-4261-86fe-4a9ff1c596dd-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "METAL CHESTPLATE",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
@@ -296,6 +227,29 @@
         "type_es": "Exclusivo"
       },
       {
+        "id": "https://www.twitch.tv/GEEGA",
+        "name": "ROCKET LAUNCHER",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/rocket-launcher.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "GEEGA",
+            "url": "https://www.twitch.tv/GEEGA",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/03e42b36-81bc-4214-9f34-5f5278a41d7b-profile_image-300x300.png"
+          },
+          {
+            "name": "BLOOPRINT",
+            "url": "https://www.twitch.tv/Blooprint",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/ac654631-14fe-45a9-aa11-b3f62915fc5e-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "ROCKET LAUNCHER",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
         "id": "https://www.twitch.tv/DisguisedToast",
         "name": "SEMI-AUTOMATIC RIFLE",
         "time": "1 HOUR",
@@ -310,24 +264,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "SEMI-AUTOMATIC RIFLE",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/peterpark",
-        "name": "DOUBLE BARREL SHOTGUN",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/dbs.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/6949420f-ce2c-4b7d-bae0-282c707592db-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "PETERPARK",
-            "url": "https://www.twitch.tv/peterpark",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/6949420f-ce2c-4b7d-bae0-282c707592db-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "DOUBLE BARREL SHOTGUN",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
@@ -387,6 +323,70 @@
         ],
         "type": "Exclusivo",
         "name_es": "LARGE WOOD BOX",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/Mammoth",
+        "name": "GARAGE DOOR",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/garage-door.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/067ab7b5-09cd-4aee-b24e-d5770dd28948-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "MAMMOTH",
+            "url": "https://www.twitch.tv/Mammoth",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/067ab7b5-09cd-4aee-b24e-d5770dd28948-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "GARAGE DOOR",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/HeyYouVideoGame",
+        "name": "LOCKER",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/locker.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "HEYYOUVIDEOGAME",
+            "url": "https://www.twitch.tv/HeyYouVideoGame",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png"
+          },
+          {
+            "name": "DAKKIIN",
+            "url": "https://www.twitch.tv/Dakkiin",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/268c26b3-4f5f-4889-99f5-257f8dbaac1b-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "LOCKER",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
+        "id": "https://www.twitch.tv/aceu",
+        "name": "METAL CHESTPLATE",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/chest-plate.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/df7b9ae8-926f-4a27-a3e2-fd151574b078-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "ACEU",
+            "url": "https://www.twitch.tv/aceu",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/df7b9ae8-926f-4a27-a3e2-fd151574b078-profile_image-300x300.png"
+          },
+          {
+            "name": "ZCHUM",
+            "url": "https://www.twitch.tv/ZChum",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/65cfe27c-2319-4261-86fe-4a9ff1c596dd-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "METAL CHESTPLATE",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       },
