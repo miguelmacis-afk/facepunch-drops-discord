@@ -275,6 +275,29 @@
         "type_es": "Exclusivo"
       },
       {
+        "id": "https://www.twitch.tv/HeyYouVideoGame",
+        "name": "LOCKER",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/September/locker.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png",
+        "streamers": [
+          {
+            "name": "HEYYOUVIDEOGAME",
+            "url": "https://www.twitch.tv/HeyYouVideoGame",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png"
+          },
+          {
+            "name": "DAKKIIN",
+            "url": "https://www.twitch.tv/Dakkiin",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/268c26b3-4f5f-4889-99f5-257f8dbaac1b-profile_image-300x300.png"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "LOCKER",
+        "time_es": "1 hora",
+        "type_es": "Exclusivo"
+      },
+      {
         "id": "https://www.twitch.tv/CYR",
         "name": "METAL FACEMASK",
         "time": "1 HOUR",
@@ -399,29 +422,6 @@
         ],
         "type": "Exclusivo",
         "name_es": "LARGE WOOD BOX",
-        "time_es": "1 hora",
-        "type_es": "Exclusivo"
-      },
-      {
-        "id": "https://www.twitch.tv/HeyYouVideoGame",
-        "name": "LOCKER",
-        "time": "1 HOUR",
-        "img": "https://files.facepunch.com/lewis/2026/September/locker.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png",
-        "streamers": [
-          {
-            "name": "HEYYOUVIDEOGAME",
-            "url": "https://www.twitch.tv/HeyYouVideoGame",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/4e9960ac-ada2-4405-b609-22ced5080725-profile_image-300x300.png"
-          },
-          {
-            "name": "DAKKIIN",
-            "url": "https://www.twitch.tv/Dakkiin",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/268c26b3-4f5f-4889-99f5-257f8dbaac1b-profile_image-300x300.png"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "LOCKER",
         "time_es": "1 hora",
         "type_es": "Exclusivo"
       }
