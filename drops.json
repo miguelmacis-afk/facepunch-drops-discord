@@ -1,20 +1,99 @@
 {
   "last_header_sent": "13/10/2026",
   "embed": {
-    "title": "0",
+    "title": "Base Invaders",
     "url": "https://twitch.facepunch.com/",
-    "image": "https://files.facepunch.com/lewis/2026/September/rust_isles.png",
-    "time": "",
-    "time_es": "",
+    "image": "https://files.facepunch.com/lewis/2026/October/Base-Invaders---Drops.png",
+    "time": "OCTOBER 23, 2026 AT 6:00 PM UTC — NOVEMBER 1, 2026 AT 11:59 PM UTC",
+    "time_es": "octubre 23, 2026 a las 6:00 PM UTC — noviembre 1, 2026 a las 11:59 PM UTC",
     "time_details": {
-      "start": "Fecha no disponible",
-      "end": "Fecha no disponible",
-      "duration": "N/A",
-      "countdown": "N/A"
+      "start": "23 de octubre de 2026 a las 20:00 CEST",
+      "end": "2 de noviembre de 2026 a las 00:59 CEST",
+      "duration": "9 días y 5 horas",
+      "countdown": "Faltan 10 días, 0 horas y 7 minutos"
     }
   },
   "twitch": {
-    "drops": []
+    "drops": [
+      {
+        "id": "https://files.facepunch.com/lewis/2026/October/rug.jpg",
+        "name": "RUG",
+        "time": "1 HOUR",
+        "img": "https://files.facepunch.com/lewis/2026/October/rug.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
+        "streamers": [],
+        "type": "General",
+        "name_es": "RUG",
+        "time_es": "1 hora",
+        "type_es": "General"
+      },
+      {
+        "id": "https://files.facepunch.com/lewis/2026/October/bed.jpg",
+        "name": "BED",
+        "time": "2 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/October/bed.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
+        "streamers": [],
+        "type": "General",
+        "name_es": "BED",
+        "time_es": "2 horas",
+        "type_es": "General"
+      },
+      {
+        "id": "https://files.facepunch.com/lewis/2026/October/garage-door.jpg",
+        "name": "GARAGE DOOR",
+        "time": "3 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/October/garage-door.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
+        "streamers": [],
+        "type": "General",
+        "name_es": "GARAGE DOOR",
+        "time_es": "3 horas",
+        "type_es": "General"
+      },
+      {
+        "id": "https://files.facepunch.com/lewis/2026/October/thompson.jpg",
+        "name": "THOMPSON",
+        "time": "4 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/October/thompson.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
+        "streamers": [],
+        "type": "General",
+        "name_es": "THOMPSON",
+        "time_es": "4 horas",
+        "type_es": "General"
+      },
+      {
+        "id": "https://files.facepunch.com/lewis/2026/October/soon.jpg",
+        "name": "COMING SOON",
+        "time": "5 HOURS",
+        "img": "https://files.facepunch.com/lewis/2026/October/soon.jpg",
+        "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
+        "streamers": [],
+        "type": "General",
+        "name_es": "COMING SOON",
+        "time_es": "5 horas",
+        "type_es": "General"
+      },
+      {
+        "id": "https://www.twitch.tv/TwitchRivals",
+        "name": "SMALL BACKPACK",
+        "time": "30 MINUTES",
+        "img": "https://files.facepunch.com/lewis/2026/October/backpack.jpg",
+        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/393ba325-486c-40f9-ba97-eeba5b5746c6-profile_image-300x300.jpeg",
+        "streamers": [
+          {
+            "name": "TWITCHRIVALS",
+            "url": "https://www.twitch.tv/TwitchRivals",
+            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/393ba325-486c-40f9-ba97-eeba5b5746c6-profile_image-300x300.jpeg"
+          }
+        ],
+        "type": "Exclusivo",
+        "name_es": "SMALL BACKPACK",
+        "time_es": "30 minutos",
+        "type_es": "Exclusivo"
+      }
+    ]
   },
   "kick": {
     "drops": []
