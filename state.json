@@ -1,6 +1,6 @@
 {
   "event_title": "Base Invaders",
-  "last_header_sent": "13/10/2026",
+  "last_header_sent": "14/10/2026",
   "twitch": {
     "drops": [
       {
@@ -52,20 +52,20 @@
         "type_es": "General"
       },
       {
-        "id": "https://files.facepunch.com/lewis/2026/October/soon.jpg",
-        "name": "COMING SOON",
+        "id": "https://files.facepunch.com/lewis/2026/October/large-wood-box.jpg",
+        "name": "LARGE WOOD BOX",
         "time": "5 HOURS",
-        "img": "https://files.facepunch.com/lewis/2026/October/soon.jpg",
+        "img": "https://files.facepunch.com/lewis/2026/October/large-wood-box.jpg",
         "profile_image": "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/twitch.png",
         "streamers": [],
         "type": "General",
-        "name_es": "COMING SOON",
+        "name_es": "LARGE WOOD BOX",
         "time_es": "5 horas",
         "type_es": "General"
       },
       {
         "id": "https://www.twitch.tv/TwitchRivals",
-        "name": "SMALL BACKPACK",
+        "name": "BACKPACK",
         "time": "30 MINUTES",
         "img": "https://files.facepunch.com/lewis/2026/October/backpack.jpg",
         "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/393ba325-486c-40f9-ba97-eeba5b5746c6-profile_image-300x300.jpeg",
@@ -77,7 +77,7 @@
           }
         ],
         "type": "Exclusivo",
-        "name_es": "SMALL BACKPACK",
+        "name_es": "BACKPACK",
         "time_es": "30 minutos",
         "type_es": "Exclusivo"
       }
