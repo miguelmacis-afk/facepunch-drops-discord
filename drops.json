@@ -1,5 +1,5 @@
 {
-  "last_header_sent": "29/10/2026",
+  "last_header_sent": "30/10/2026",
   "embed": {
     "title": "Base Invaders",
     "url": "https://twitch.facepunch.com/",
@@ -74,24 +74,6 @@
         "name_es": "LARGE WOOD BOX",
         "time_es": "5 horas",
         "type_es": "General"
-      },
-      {
-        "id": "https://www.twitch.tv/TwitchRivals",
-        "name": "BACKPACK",
-        "time": "30 MINUTES",
-        "img": "https://files.facepunch.com/lewis/2026/October/backpack.jpg",
-        "profile_image": "https://static-cdn.jtvnw.net/jtv_user_pictures/393ba325-486c-40f9-ba97-eeba5b5746c6-profile_image-300x300.jpeg",
-        "streamers": [
-          {
-            "name": "TWITCHRIVALS",
-            "url": "https://www.twitch.tv/TwitchRivals",
-            "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/393ba325-486c-40f9-ba97-eeba5b5746c6-profile_image-300x300.jpeg"
-          }
-        ],
-        "type": "Exclusivo",
-        "name_es": "BACKPACK",
-        "time_es": "30 minutos",
-        "type_es": "Exclusivo"
       }
     ]
   },
