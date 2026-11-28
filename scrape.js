@@ -119,9 +119,17 @@ function processEventDates(rawTime) {
   let countdownStr = 'No calculable';
 
   if (startDate && endDate) {
-    const options = { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-    startFormatted = `${startDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
-    endFormatted = `${endDate.toLocaleString('es-ES', { ...options, timeZone: 'Europe/Madrid' })} CEST`;
+    const options = {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Madrid',
+      timeZoneName: 'short'
+    };
+    startFormatted = startDate.toLocaleString('es-ES', options);
+    endFormatted = endDate.toLocaleString('es-ES', options);
 
     const durationMs = endDate.getTime() - startDate.getTime();
     const durDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
@@ -151,6 +159,19 @@ function processEventDates(rawTime) {
   };
 }
 
+function isPlaceholderTitle(title) {
+  if (!title) return true;
+  const normalized = title.trim().toLowerCase();
+  return [
+    'rust drops',
+    'drops on',
+    'drops on twitch',
+    'drops on kick',
+    'unknown',
+    ''
+  ].includes(normalized);
+}
+
 async function scrapePlatform(context, url) {
   const page = await context.newPage();
   try {
@@ -160,7 +181,7 @@ async function scrapePlatform(context, url) {
 
     const embed = await page.evaluate((baseUrl) => {
       const titleEl = document.querySelector('.campaign-title, header h1, .event-title, .hero h1, h1');
-      let title = titleEl ? titleEl.innerText.trim() : 'Rust Drops';
+      let title = titleEl ? titleEl.innerText.trim() : '';
       title = title.split('\n')[0].trim();
 
       let imageUrl = '';
@@ -229,12 +250,12 @@ async function scrapePlatform(context, url) {
         box.querySelectorAll(`a[href*="${isKick ? 'kick.com' : 'twitch.tv'}"]`).forEach(a => {
           const streamerName = a.innerText.trim() || streamerNameRaw || 'Streamer';
           const cleanKey = streamerName.toLowerCase();
-          
+
           if (cleanKey && !streamersMap.has(cleanKey)) {
             let avatarSrc = a.querySelector('img')?.src || '';
             if (!avatarSrc) {
-               const avatarFallback = box.querySelector('.avatar img, img.avatar, .streamer-image img');
-               if (avatarFallback) avatarSrc = avatarFallback.src;
+              const avatarFallback = box.querySelector('.avatar img, img.avatar, .streamer-image img');
+              if (avatarFallback) avatarSrc = avatarFallback.src;
             }
             if (!firstAvatar && avatarSrc) firstAvatar = avatarSrc;
             streamersMap.set(cleanKey, { name: streamerName, url: a.href, avatar: avatarSrc });
@@ -243,11 +264,10 @@ async function scrapePlatform(context, url) {
 
         const streamers = Array.from(streamersMap.values());
         const type = isGeneral || streamers.length === 0 ? 'General' : 'Exclusivo';
-        
-        // Guardamos la imagen de perfil principal del drop para el JSON
+
         const profileImage = type === 'General' ? defaultLogo : (firstAvatar || defaultLogo);
         const dropLink = box.querySelector('a')?.href || '';
-        
+
         return {
           id: dropLink || img || name,
           name,
@@ -260,9 +280,14 @@ async function scrapePlatform(context, url) {
       });
     }, url.includes('kick'));
 
-    return { 
-      embed, 
-      drops: drops.map(d => ({ ...d, name_es: translateText(d.name), time_es: translateText(d.time), type_es: translateText(d.type) })) 
+    return {
+      embed,
+      drops: drops.map(d => ({
+        ...d,
+        name_es: translateText(d.name),
+        time_es: translateText(d.time),
+        type_es: translateText(d.type)
+      }))
     };
   } catch (err) {
     console.error(`❌ Error scraping ${url}:`, err);
@@ -289,16 +314,16 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
   const previousIds = new Set(previousDrops.map(d => d.id));
   const newDrops = currentDrops.filter(d => !previousIds.has(d.id));
 
-  if (newDrops.length === 0) return currentDrops;
+  if (newDrops.length === 0) return previousDrops;
 
   console.log(`🚀 Enviando ${newDrops.length} nuevos drops de ${platformName} a Discord...`);
 
   for (const drop of newDrops) {
     const isExclusivo = drop.streamers.length > 0;
     const translatedName = translateItemName(drop.name);
-    
+
     let title, description, url;
-    
+
     if (isExclusivo) {
       title = `⭐ Drop Exclusivo`;
       url = drop.streamers[0].url;
@@ -310,14 +335,16 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
       description = `🎁 **${translatedName}**\n⏱ ${drop.time_es || drop.time}\n🌍 Disponible en todos los canales participantes con drops.`;
     }
 
-    // Embed de Discord original, sin modificaciones
-    await sendDiscordWebhook({
-      embeds: [{
-        title, url, description, color,
-        thumbnail: { url: drop.img }
-      }]
-    });
-    await delay(1500); 
+    const embedPayload = {
+      title,
+      url,
+      description,
+      color,
+      ...(drop.img ? { thumbnail: { url: drop.img } } : {})
+    };
+
+    await sendDiscordWebhook({ embeds: [embedPayload] });
+    await delay(1500);
   }
 
   return currentDrops;
@@ -329,29 +356,51 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
 (async () => {
   let state = { event_title: '', last_header_sent: '', twitch: { drops: [] }, kick: { drops: [] } };
   if (fs.existsSync(STATE_FILE)) {
-    try { 
-      const loadedState = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); 
+    try {
+      const loadedState = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
       state = {
         ...state,
         ...loadedState,
         twitch: loadedState.twitch || { drops: [] },
         kick: loadedState.kick || { drops: [] }
       };
-    } 
-    catch (e) { console.error('⚠️ Aviso: No se pudo leer state.json, iniciando limpio.'); }
+    } catch (e) {
+      console.error('⚠️ Aviso: No se pudo leer state.json, iniciando limpio.');
+    }
   }
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const twitchData = await scrapePlatform(context, 'https://twitch.facepunch.com/');
-  const kickData = await scrapePlatform(context, 'https://kick.facepunch.com/'); 
+  const kickData = await scrapePlatform(context, 'https://kick.facepunch.com/');
   await browser.close();
 
-  const embedHeader = twitchData.embed || kickData.embed || { title: 'Rust Drops', url: 'https://twitch.facepunch.com/', image: '', time: '' };
+  const twitchDropsCount = twitchData.drops?.length || 0;
+  const kickDropsCount = kickData.drops?.length || 0;
+  const totalDrops = twitchDropsCount + kickDropsCount;
+
+  const candidateEmbeds = [twitchData.embed, kickData.embed].filter(Boolean);
+  const bestEmbed = candidateEmbeds.find(e => !isPlaceholderTitle(e.title) && Boolean(e.time));
+
+  if (totalDrops === 0 && !bestEmbed) {
+    console.log('\n💤 No hay drops activos ni campaña anunciada en Twitch o Kick. No se envía nada a Discord.');
+    return;
+  }
+
+  const embedHeader = bestEmbed || {
+    title: 'Rust Drops',
+    url: 'https://twitch.facepunch.com/',
+    image: '',
+    time: ''
+  };
+
   const dateDetails = processEventDates(embedHeader.time);
   const todayStr = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
+  const hasValidDates =
+    dateDetails.start !== 'Fecha no disponible' &&
+    dateDetails.end !== 'Fecha no disponible';
 
-  if (state.last_header_sent !== todayStr && embedHeader.title) {
+  if (state.last_header_sent !== todayStr && !isPlaceholderTitle(embedHeader.title) && hasValidDates) {
     console.log(`📢 Enviando cabecera del evento: ${embedHeader.title}`);
     await sendDiscordWebhook({
       embeds: [{
@@ -366,14 +415,20 @@ async function processAndSendDrops(platformName, currentDrops, previousDrops, co
     state.last_header_sent = todayStr;
     await delay(2000);
   } else {
-    console.log('ℹ️ El embed del evento ya se envió hoy. Omitiendo envío a Discord de la cabecera.');
+    console.log('ℹ️ Cabecera omitida (ya enviada hoy, título genérico o sin fechas válidas).');
   }
 
-  state.twitch.drops = await processAndSendDrops('Twitch', twitchData.drops || [], state.twitch?.drops || [], COLORS.TWITCH);
-  state.kick.drops = await processAndSendDrops('Kick', kickData.drops || [], state.kick?.drops || [], COLORS.KICK);
-  state.event_title = embedHeader.title;
+  if (twitchDropsCount > 0) {
+    state.twitch.drops = await processAndSendDrops('Twitch', twitchData.drops, state.twitch?.drops || [], COLORS.TWITCH);
+  }
+  if (kickDropsCount > 0) {
+    state.kick.drops = await processAndSendDrops('Kick', kickData.drops, state.kick?.drops || [], COLORS.KICK);
+  }
 
-  // Los drops en el JSON ahora incluyen la propiedad "profile_image"
+  if (!isPlaceholderTitle(embedHeader.title)) {
+    state.event_title = embedHeader.title;
+  }
+
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
   fs.writeFileSync(DROPS_FILE, JSON.stringify({
     last_header_sent: state.last_header_sent,
